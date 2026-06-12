@@ -43,10 +43,27 @@ export const READINGS: Record<string, DayReadings> = {
   },
 };
 
-/** Deep-link to the official Church of England lectionary for a given date. */
-export function officialLectionaryUrl(day: LiturgicalDay): string {
-  const iso = day.date.toISOString().slice(0, 10);
-  return `https://www.churchofengland.org/prayer-and-worship/worship-texts-and-resources/common-worship/prayer-during-day/lectionary?date=${iso}`;
+/**
+ * Deep-link to the official Church of England Daily Prayer page for the date,
+ * which carries that day's psalms and readings. The C of E retired the old
+ * `…/prayer-during-day/lectionary?date=` URL (it now lands on a site search),
+ * but publishes each office at a stable per-date address like
+ * `…/join-us-in-daily-prayer/morning-prayer-contemporary-tuesday-16-june-2026`.
+ * Note these are the Daily Office readings; principal-service (RCL) readings
+ * for Sundays are filled from LectServe/the local table before this fallback.
+ */
+export function officialLectionaryUrl(
+  day: LiturgicalDay,
+  timeOfDay: 'morning' | 'evening' | 'night' | 'any' = 'any',
+  traditional = false,
+): string {
+  const office =
+    timeOfDay === 'evening' ? 'evening-prayer' : timeOfDay === 'night' ? 'night-prayer' : 'morning-prayer';
+  const style = traditional ? 'traditional' : 'contemporary';
+  const d = day.date;
+  const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' }).toLowerCase();
+  const month = d.toLocaleDateString('en-GB', { month: 'long' }).toLowerCase();
+  return `https://www.churchofengland.org/prayer-and-worship/join-us-in-daily-prayer/${office}-${style}-${weekday}-${d.getDate()}-${month}-${d.getFullYear()}`;
 }
 
 export function getReadings(day: LiturgicalDay): DayReadings | undefined {

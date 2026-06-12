@@ -6,6 +6,7 @@ import { getService, type ServiceSection } from '../data/services';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
 import { getPsalmText, GLORIA } from '../data/psalter';
+import { loadSectionPrefs } from './storage';
 import type { ServicePlan, Settings, HymnChoice } from './types';
 
 /** Coverdale text for whichever bundled psalms a set of refs names. */
@@ -27,12 +28,17 @@ export function dayFromIso(iso: string): LiturgicalDay {
   return getLiturgicalDay(new Date(y, (m ?? 1) - 1, d ?? 1));
 }
 
-/** Build a fresh plan for a service with optional sections set to their default. */
+/**
+ * Build a fresh plan for a service. Optional sections start off, except those
+ * the user switched on the last time they prepared this service (remembered
+ * per service in storage).
+ */
 export function defaultPlan(serviceId: string, dateIso: string): ServicePlan {
   const service = getService(serviceId);
+  const remembered = loadSectionPrefs(serviceId);
   const includedSections: Record<string, boolean> = {};
   for (const s of service?.sections ?? []) {
-    if (s.optional) includedSections[s.id] = s.defaultOn ?? true;
+    if (s.optional) includedSections[s.id] = remembered[s.id] ?? false;
   }
   return {
     serviceId,
@@ -45,7 +51,7 @@ export function defaultPlan(serviceId: string, dateIso: string): ServicePlan {
 
 export function isSectionIncluded(plan: ServicePlan, section: ServiceSection): boolean {
   if (!section.optional) return true;
-  return plan.includedSections[section.id] ?? section.defaultOn ?? true;
+  return plan.includedSections[section.id] ?? false;
 }
 
 export function hymnForSection(plan: ServicePlan, sectionId: string): HymnChoice | undefined {
@@ -95,6 +101,11 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
   const day = dayFromIso(plan.dateIso);
   const readings = getReadings(day);
   const collect = getCollect(day, service.tradition);
+  const lectionaryUrl = officialLectionaryUrl(
+    day,
+    service.timeOfDay,
+    service.tradition === 'Book of Common Prayer',
+  );
 
   // Distribute available readings across reading slots in order.
   const refList = readings?.principal ?? [];
@@ -127,7 +138,7 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
           ...base,
           kind: 'reading',
           refs: ref ? [ref] : [],
-          fallbackUrl: officialLectionaryUrl(day),
+          fallbackUrl: lectionaryUrl,
         });
         break;
       }
@@ -142,7 +153,7 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
           text: s.text ?? psalter,
           attribution: s.text ? base.attribution : psalter ? 'Coverdale Psalter (BCP 1662)' : undefined,
           unverified: s.text ? s.unverified : psalter ? true : undefined,
-          fallbackUrl: officialLectionaryUrl(day),
+          fallbackUrl: lectionaryUrl,
         });
         break;
       }
@@ -175,6 +186,20 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
       default:
         steps.push({ ...base, kind: 'said', text: s.text });
         break;
+    }
+
+    // Text the user pasted from an official source replaces whatever the
+    // section had (placeholder, link-out or nothing) — so it displays,
+    // prints and reads aloud offline.
+    const custom = plan.customTexts?.[s.id]?.trim();
+    const last = steps[steps.length - 1];
+    if (custom && last?.sectionId === s.id) {
+      steps[steps.length - 1] = {
+        ...last,
+        text: custom,
+        attribution: 'Text pasted in by you — check it matches the authorised text',
+        unverified: false,
+      };
     }
   }
   return steps;

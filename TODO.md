@@ -34,7 +34,10 @@ ideas parked for later. (See `README.md` for what's already built.)
 3. **Decide on Common Worship texts.** The CW services are placeholders
    because the text is © The Archbishops' Council. If the parish holds the
    right licence (most do for local reproduction), drop the texts into
-   `src/data/services.ts`. Otherwise the BCP services are fully usable today.
+   `src/data/services.ts` — or simply paste them per-plan in the wizard
+   (sections marked "text not bundled" have a paste box; pasted text works
+   offline and with the read-aloud voice). Otherwise the BCP services are
+   fully usable today.
 4. **Pick a deployment domain** if GitHub Pages isn't wanted (Netlify/Vercel
    also work; unset `VV_BASE` for a root domain).
 

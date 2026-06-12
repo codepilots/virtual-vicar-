@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Settings, ServicePlan, HymnChoice } from '../lib/types';
-import { SERVICES, getService } from '../data/services';
+import { SERVICES, getService, isPlaceholderText } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
 import { officialLectionaryUrl } from '../data/readings';
 import { getCollect, officialCollectUrl } from '../data/collects';
@@ -14,6 +14,7 @@ import {
   overlayLectionary,
   todayIso,
 } from '../lib/plan';
+import { saveSectionPrefs } from '../lib/storage';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
 import { FeedPreview } from './FeedPreview';
@@ -41,11 +42,31 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
 
   const update = (patch: Partial<ServicePlan>) => setPlan((p) => ({ ...p, ...patch }));
 
+  // Toggle an optional section and remember the choice for this service, so
+  // the next plan for the same service starts from these selections.
+  const toggleSection = (sectionId: string, on: boolean) => {
+    const includedSections = { ...plan.includedSections, [sectionId]: on };
+    saveSectionPrefs(plan.serviceId, includedSections);
+    update({ includedSections });
+  };
+
+  // Store text the user pasted from an official source for a section
+  // (empty/whitespace clears it).
+  const setCustomText = (sectionId: string, text: string) => {
+    const customTexts = { ...plan.customTexts };
+    if (text.trim()) customTexts[sectionId] = text;
+    else delete customTexts[sectionId];
+    update({ customTexts });
+  };
+
+  const sectionOn = (s: (typeof service.sections)[number]) =>
+    !s.optional || (plan.includedSections[s.id] ?? false);
+
   const next = () => setStep((s) => Math.min(STEP_COUNT - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   const hymnSections = service.sections.filter(
-    (s) => s.kind === 'hymn' && (plan.includedSections[s.id] ?? s.defaultOn ?? true),
+    (s) => s.kind === 'hymn' && (plan.includedSections[s.id] ?? false),
   );
 
   const estMinutes = useMemo(
@@ -107,35 +128,44 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
         <div>
           <h2>Which parts will you include?</h2>
           <p className="subtle">Turn optional sections on or off. Fixed parts are always shown.</p>
+          {service.tradition === 'Common Worship' && (
+            <p className="subtle">
+              Sections marked “text not bundled” show only a placeholder: the Common Worship
+              wording is © The Archbishops’ Council, so it isn’t shipped with the app. If your
+              parish holds the usual reproduction licence, paste the wording in and it will be
+              shown, printed and read aloud — even offline.
+            </p>
+          )}
           <div className="card">
             {service.sections.map((s) => {
-              const on = s.optional
-                ? (plan.includedSections[s.id] ?? s.defaultOn ?? true)
-                : true;
+              const on = s.optional ? (plan.includedSections[s.id] ?? false) : true;
               return (
-                <label className="switch" key={s.id}>
-                  <span className="sw-text">
-                    <span className="t">{s.title}</span>
-                    <span className="d">
-                      {s.optional ? 'Optional' : 'Always included'}
-                      {s.note ? ` · ${s.note}` : ''}
+                <div key={s.id}>
+                  <label className="switch">
+                    <span className="sw-text">
+                      <span className="t">{s.title}</span>
+                      <span className="d">
+                        {s.optional ? 'Optional' : 'Always included'}
+                        {isPlaceholderText(s.text) ? ' · text not bundled' : ''}
+                        {s.note ? ` · ${s.note}` : ''}
+                      </span>
                     </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="toggle"
-                    checked={on}
-                    disabled={!s.optional}
-                    onChange={(e) =>
-                      update({
-                        includedSections: {
-                          ...plan.includedSections,
-                          [s.id]: e.target.checked,
-                        },
-                      })
-                    }
-                  />
-                </label>
+                    <input
+                      type="checkbox"
+                      className="toggle"
+                      checked={on}
+                      disabled={!s.optional}
+                      onChange={(e) => toggleSection(s.id, e.target.checked)}
+                    />
+                  </label>
+                  {on && isPlaceholderText(s.text) && (
+                    <PasteTextBox
+                      label={`Paste the authorised text for “${s.title}”`}
+                      value={plan.customTexts?.[s.id] ?? ''}
+                      onChange={(t) => setCustomText(s.id, t)}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -173,6 +203,16 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             <a className="link" href={officialCollectUrl(day)} target="_blank" rel="noreferrer">
               View the authorised collect →
             </a>
+            {(() => {
+              const collectSection = service.sections.find((s) => s.kind === 'collect');
+              return collectSection && sectionOn(collectSection) ? (
+                <PasteTextBox
+                  label="Paste the collect for offline use & read-aloud"
+                  value={plan.customTexts?.[collectSection.id] ?? ''}
+                  onChange={(t) => setCustomText(collectSection.id, t)}
+                />
+              ) : null;
+            })()}
           </div>
           <div className="card">
             <h3>Readings</h3>
@@ -204,9 +244,28 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                 lectionary for Second/Third Service variations.
               </p>
             )}
-            <a className="link" href={officialLectionaryUrl(day)} target="_blank" rel="noreferrer">
+            <a
+              className="link"
+              href={officialLectionaryUrl(
+                day,
+                service.timeOfDay,
+                service.tradition === 'Book of Common Prayer',
+              )}
+              target="_blank"
+              rel="noreferrer"
+            >
               Open the official lectionary for this date →
             </a>
+            {service.sections
+              .filter((s) => (s.kind === 'reading' || s.kind === 'psalm') && !s.text && sectionOn(s))
+              .map((s) => (
+                <PasteTextBox
+                  key={s.id}
+                  label={`Paste the text of “${s.title}” for offline use & read-aloud`}
+                  value={plan.customTexts?.[s.id] ?? ''}
+                  onChange={(t) => setCustomText(s.id, t)}
+                />
+              ))}
           </div>
         </div>
       )}
@@ -232,6 +291,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
               ownedBookIds={settings.ownedHymnBookIds}
               readingRefs={readings.refs}
               online={settings.useOnlineSources}
+              onlyBundledMidi={settings.onlyBundledMidi}
               value={plan.hymns.find((h) => h.sectionId === s.id)}
               onChange={(c) => setHymn(c, s.id)}
             />
@@ -305,7 +365,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             <div className="subtle">
               {
                 service.sections.filter(
-                  (s) => !s.optional || (plan.includedSections[s.id] ?? s.defaultOn ?? true),
+                  (s) => !s.optional || (plan.includedSections[s.id] ?? false),
                 ).length
               }{' '}
               sections · {plan.hymns.length} hymn(s) ·{' '}
@@ -341,5 +401,47 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A collapsible textarea for pasting text from an official source (e.g. the
+ * C of E website) into a section, so it works offline and can be read aloud.
+ * Starts open when it already holds text.
+ */
+function PasteTextBox({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (text: string) => void;
+}) {
+  return (
+    <details open={Boolean(value)} style={{ margin: '4px 0 10px' }}>
+      <summary className="link" style={{ cursor: 'pointer', fontSize: 14 }}>
+        {value ? `✓ ${label}` : label}
+      </summary>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={5}
+        placeholder="Paste the text here…"
+        style={{
+          width: '100%',
+          marginTop: 6,
+          padding: 10,
+          fontFamily: 'inherit',
+          fontSize: 15,
+          boxSizing: 'border-box',
+        }}
+      />
+      <div className="subtle" style={{ fontSize: 12, marginTop: 2 }}>
+        Stored only on this device (and in plans you share or back up). Please make sure your
+        parish holds the right to reproduce it — Common Worship texts are © The Archbishops’
+        Council and most parishes hold the standard local-reproduction licence.
+      </div>
+    </details>
   );
 }

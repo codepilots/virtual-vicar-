@@ -15,10 +15,10 @@ officiant's voice directly via text‑to‑speech.
 | Requirement | How it's met |
 | --- | --- |
 | Choose from a list of suitable (lay-led) services | `src/data/services.ts` (Common Worship offices) + `src/data/bcp.ts` (BCP 1662 Mattins & Evensong, full text) |
-| Indicate which optional parts to include / omit | Wizard step 2 — every optional section has a toggle; fixed parts are locked on |
+| Indicate which optional parts to include / omit | Wizard step 2 — every optional section has a toggle (all off by default; your last selections per service are remembered); fixed parts are locked on |
 | Correct readings & collect for the day | `src/data/calendar.ts` computes the liturgical day → live RCL readings via the LectServe API, falling back to the local table and deep‑links to the official C of E lectionary/collects |
 | Choice of Bible versions, linked to book/chapter/verse | `src/data/bibleVersions.ts` builds passage URLs (NRSVA, NIVUK, ESV, KJV, CEV, MSG…) |
-| Suggest hymns; user configures which hymn books are available | Hymn books chosen in **Settings**; `suggestHymns()` only proposes hymns you own and scores them by season & congregation |
+| Suggest hymns; user configures which hymn books are available | Hymn books chosen in **Settings**; `suggestHymns()` only proposes hymns you own and scores them by season & congregation. An optional Settings filter limits suggestions to hymns whose tune MIDI is bundled (always playable, even offline) |
 | Locate a MIDI for the tune; multiple settings; verses/choruses & order | `HymnPicker` — pick the tune/setting, number of verses, whether to sing the chorus, and the exact order (e.g. `v1, chorus, v2`). 33 public-domain tune MIDIs are bundled (`public/midi/`, credits in `public/midi/CREDITS.md`) and play offline |
 | Option to play the MIDI or not | Per‑hymn "Play the tune" toggle; an embedded MIDI player loads on demand, with an open/download link fallback |
 | As many or few hymns as you like | Each hymn slot is independent and removable |
@@ -63,6 +63,12 @@ These work entirely in the browser — no server, no API key:
   hand‑transcribed and carry `verified`/`unverified` flags until proofread
   against a printed copy; the UI marks them ⚠ wherever they appear (run mode,
   wizard, print sheet), and Settings → *About & sources* lists all credits.
+- **Paste-in texts** — any section whose wording isn't bundled (the licensed
+  Common Worship liturgy, the day's collect, the readings) has a paste box in
+  the wizard: copy the text from the official C of E pages once, and it is
+  stored with the plan, shown offline, printed, and read aloud by the TTS
+  voice. The user is reminded the parish must hold the usual reproduction
+  licence for copyright texts.
 - **Printable order of service** — `PrintSheet` assembles the whole plan into a
   clean document for the leader or printed pew sheets (`window.print()` → PDF).
 - **Run‑mode practicalities** — Screen Wake Lock keeps the phone awake while

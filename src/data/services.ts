@@ -25,10 +25,12 @@ export interface ServiceSection {
   title: string;
   kind: SectionKind;
   role: Role;
-  /** Whether the user may omit this section when configuring. */
+  /**
+   * Whether the user may omit this section when configuring. Optional
+   * sections start OFF in a fresh plan; the user's last selections for the
+   * service are remembered and used as the starting point next time.
+   */
   optional: boolean;
-  /** Default on/off when optional (defaults to true). */
-  defaultOn?: boolean;
   /** Spoken/printed text where the section has fixed words. */
   text?: string;
   /** Short helper note shown to the user. */
@@ -60,6 +62,15 @@ function placeholder(title: string): string {
   return `[${title} — insert authorised text.]`;
 }
 
+/**
+ * True when a section's `text` is one of the scaffold placeholders above —
+ * i.e. the real (licensed) wording is not bundled and the user may paste it
+ * in themselves via the wizard.
+ */
+export function isPlaceholderText(text: string | undefined): boolean {
+  return Boolean(text && /^\[.*insert authorised text\.?\]$/s.test(text.trim()));
+}
+
 const morningPrayer: ServiceDefinition = {
   id: 'morning-prayer-cw',
   name: 'Morning Prayer',
@@ -69,23 +80,23 @@ const morningPrayer: ServiceDefinition = {
   timeOfDay: 'morning',
   sections: [
     { id: 'preparation', title: 'Preparation', kind: 'said', role: 'officiant', optional: false, text: placeholder('Opening sentence & preparation') },
-    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: true },
-    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Confession') },
-    { id: 'absolution', title: 'Absolution', kind: 'said', role: 'officiant', optional: true, defaultOn: true, note: 'A lay person uses the form “us/our”, not “you/your”.', text: placeholder('Absolution (form for lay leader)') },
+    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true },
+    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, text: placeholder('Confession') },
+    { id: 'absolution', title: 'Absolution', kind: 'said', role: 'officiant', optional: true, note: 'A lay person uses the form “us/our”, not “you/your”.', text: placeholder('Absolution (form for lay leader)') },
     { id: 'preces', title: 'Opening Versicles', kind: 'responsive', role: 'officiant', optional: false, text: placeholder('O Lord, open our lips…') },
-    { id: 'venite', title: 'Venite / Opening Canticle', kind: 'psalm', role: 'all', optional: true, defaultOn: true },
+    { id: 'venite', title: 'Venite / Opening Canticle', kind: 'psalm', role: 'all', optional: true },
     { id: 'psalmody', title: 'Psalmody', kind: 'psalm', role: 'all', optional: false, note: 'From the lectionary for the day.' },
     { id: 'first-reading', title: 'First Reading', kind: 'reading', role: 'reader', optional: false },
-    { id: 'canticle', title: 'Canticle', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Canticle, e.g. Benedictus') },
-    { id: 'second-reading', title: 'Second Reading', kind: 'reading', role: 'reader', optional: true, defaultOn: true },
-    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, defaultOn: false, note: 'Optional reflection or address.' },
-    { id: 'creed', title: 'The Apostles’ Creed', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Apostles’ Creed') },
+    { id: 'canticle', title: 'Canticle', kind: 'said', role: 'all', optional: true, text: placeholder('Canticle, e.g. Benedictus') },
+    { id: 'second-reading', title: 'Second Reading', kind: 'reading', role: 'reader', optional: true },
+    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, note: 'Optional reflection or address.' },
+    { id: 'creed', title: 'The Apostles’ Creed', kind: 'said', role: 'all', optional: true, text: placeholder('Apostles’ Creed') },
     { id: 'prayers', title: 'Prayers / Intercessions', kind: 'prayers', role: 'officiant', optional: false },
     { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: placeholder('The Lord’s Prayer') },
     { id: 'collect', title: 'The Collect of the Day', kind: 'collect', role: 'officiant', optional: false },
-    { id: 'mid-hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'mid-hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true },
     { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding sentence & grace') },
-    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: true },
+    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true },
   ],
 };
 
@@ -109,12 +120,12 @@ const nightPrayer: ServiceDefinition = {
   timeOfDay: 'night',
   sections: [
     { id: 'preparation', title: 'Preparation', kind: 'said', role: 'officiant', optional: false, text: placeholder('The Lord almighty grant us a quiet night…') },
-    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Confession') },
-    { id: 'hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, text: placeholder('Confession') },
+    { id: 'hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true },
     { id: 'psalmody', title: 'Psalmody', kind: 'psalm', role: 'all', optional: false },
     { id: 'reading', title: 'Short Reading', kind: 'reading', role: 'reader', optional: false },
-    { id: 'responsory', title: 'Responsory', kind: 'responsive', role: 'officiant', optional: true, defaultOn: true, text: placeholder('Into your hands, O Lord…') },
-    { id: 'nunc-dimittis', title: 'Nunc Dimittis', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Nunc Dimittis') },
+    { id: 'responsory', title: 'Responsory', kind: 'responsive', role: 'officiant', optional: true, text: placeholder('Into your hands, O Lord…') },
+    { id: 'nunc-dimittis', title: 'Nunc Dimittis', kind: 'said', role: 'all', optional: true, text: placeholder('Nunc Dimittis') },
     { id: 'prayers', title: 'Prayers', kind: 'prayers', role: 'officiant', optional: false },
     { id: 'collect', title: 'The Collect', kind: 'collect', role: 'officiant', optional: false },
     { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding blessing') },
@@ -130,18 +141,18 @@ const serviceOfTheWord: ServiceDefinition = {
   timeOfDay: 'any',
   sections: [
     { id: 'greeting', title: 'Greeting', kind: 'responsive', role: 'officiant', optional: false, text: placeholder('The Lord be with you…') },
-    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: true },
-    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Confession') },
-    { id: 'collect', title: 'The Collect', kind: 'collect', role: 'officiant', optional: true, defaultOn: true },
+    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true },
+    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, text: placeholder('Confession') },
+    { id: 'collect', title: 'The Collect', kind: 'collect', role: 'officiant', optional: true },
     { id: 'first-reading', title: 'Reading', kind: 'reading', role: 'reader', optional: false },
-    { id: 'psalm', title: 'Psalm or Song', kind: 'psalm', role: 'all', optional: true, defaultOn: true },
-    { id: 'gospel', title: 'Gospel Reading', kind: 'reading', role: 'reader', optional: true, defaultOn: true },
-    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, defaultOn: true },
-    { id: 'creed', title: 'Affirmation of Faith', kind: 'said', role: 'all', optional: true, defaultOn: true, text: placeholder('Affirmation of Faith') },
-    { id: 'mid-hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'psalm', title: 'Psalm or Song', kind: 'psalm', role: 'all', optional: true },
+    { id: 'gospel', title: 'Gospel Reading', kind: 'reading', role: 'reader', optional: true },
+    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true },
+    { id: 'creed', title: 'Affirmation of Faith', kind: 'said', role: 'all', optional: true, text: placeholder('Affirmation of Faith') },
+    { id: 'mid-hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true },
     { id: 'prayers', title: 'Prayers / Intercessions', kind: 'prayers', role: 'officiant', optional: false },
     { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: placeholder('The Lord’s Prayer') },
-    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: true },
+    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true },
     { id: 'dismissal', title: 'The Dismissal', kind: 'said', role: 'officiant', optional: false, text: placeholder('Dismissal') },
   ],
 };

@@ -85,6 +85,21 @@ export function SettingsScreen({ settings, onChange }: Props) {
             </button>
           ))}
         </div>
+        <label className="switch" style={{ marginTop: 10 }}>
+          <span className="sw-text">
+            <span className="t">Only hymns with a bundled tune</span>
+            <span className="d">
+              Suggest only hymns whose tune MIDI ships with the app, so “Play the tune” always
+              works — even offline. Public domain, credits in midi/CREDITS.md.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={settings.onlyBundledMidi}
+            onChange={(e) => set({ onlyBundledMidi: e.target.checked })}
+          />
+        </label>
       </div>
 
       <div className="card">

@@ -150,10 +150,10 @@ const GRACE = `The grace of our Lord Jesus Christ, and the love of God, and the 
 // Shared opening of both offices (penitential introduction).
 function penitentialIntro(): ServiceSection[] {
   return [
-    { id: 'opening-sentence', title: 'Opening Sentence', kind: 'said', role: 'officiant', optional: true, defaultOn: true, text: OPENING_SENTENCE, note: 'One or more sentences of Scripture. Choose any appointed for the season.' },
-    { id: 'exhortation', title: 'The Exhortation', kind: 'said', role: 'officiant', optional: true, defaultOn: true, text: EXHORTATION },
+    { id: 'opening-sentence', title: 'Opening Sentence', kind: 'said', role: 'officiant', optional: true, text: OPENING_SENTENCE, note: 'One or more sentences of Scripture. Choose any appointed for the season.' },
+    { id: 'exhortation', title: 'The Exhortation', kind: 'said', role: 'officiant', optional: true, text: EXHORTATION },
     { id: 'confession', title: 'General Confession', kind: 'said', role: 'all', optional: false, text: GENERAL_CONFESSION, note: 'Said by the whole congregation, kneeling.' },
-    { id: 'absolution', title: 'The Absolution', kind: 'rubric', role: 'none', optional: true, defaultOn: true, text: ABSOLUTION_RUBRIC, note: 'Priestly act — a lay leader omits it (see the rubric).' },
+    { id: 'absolution', title: 'The Absolution', kind: 'rubric', role: 'none', optional: true, text: ABSOLUTION_RUBRIC, note: 'Priestly act — a lay leader omits it (see the rubric).' },
     { id: 'lords-prayer-1', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: LORDS_PRAYER },
     { id: 'versicles', title: 'O Lord, open thou our lips', kind: 'responsive', role: 'officiant', optional: false, text: OPENING_VERSICLES },
   ];
@@ -183,10 +183,10 @@ function commonPrayersAndCollects(eveningCollects: boolean): ServiceSection[] {
       optional: false,
       text: eveningCollects ? COLLECT_PERILS : COLLECT_GRACE,
     },
-    { id: 'anthem', title: 'Anthem / Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false, note: 'In quires and places where they sing, here followeth the Anthem.' },
-    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, defaultOn: false, note: 'Optional at the daily office.' },
-    { id: 'prayers', title: 'The Occasional Prayers', kind: 'prayers', role: 'officiant', optional: true, defaultOn: true, note: 'Prayers for the King’s Majesty, the Royal Family, the Clergy and People, and other occasions.' },
-    { id: 'chrysostom', title: 'A Prayer of St Chrysostom', kind: 'said', role: 'officiant', optional: true, defaultOn: true, text: CHRYSOSTOM },
+    { id: 'anthem', title: 'Anthem / Hymn', kind: 'hymn', role: 'all', optional: true, note: 'In quires and places where they sing, here followeth the Anthem.' },
+    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, note: 'Optional at the daily office.' },
+    { id: 'prayers', title: 'The Occasional Prayers', kind: 'prayers', role: 'officiant', optional: true, note: 'Prayers for the King’s Majesty, the Royal Family, the Clergy and People, and other occasions.' },
+    { id: 'chrysostom', title: 'A Prayer of St Chrysostom', kind: 'said', role: 'officiant', optional: true, text: CHRYSOSTOM },
     { id: 'grace', title: 'The Grace', kind: 'said', role: 'all', optional: false, text: GRACE },
   ];
 }
@@ -199,16 +199,16 @@ const bcpMorningPrayer: ServiceDefinition = {
   layLed: true,
   timeOfDay: 'morning',
   sections: [
-    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true },
     ...penitentialIntro(),
-    { id: 'venite', title: 'Venite (Psalm 95)', kind: 'said', role: 'all', optional: true, defaultOn: true, text: VENITE },
+    { id: 'venite', title: 'Venite (Psalm 95)', kind: 'said', role: 'all', optional: true, text: VENITE },
     { id: 'psalms', title: 'The Psalms appointed', kind: 'psalm', role: 'all', optional: false, note: 'The Psalms for the day from the Prayer Book lectionary.' },
     { id: 'first-lesson', title: 'The First Lesson (Old Testament)', kind: 'reading', role: 'reader', optional: false },
-    { id: 'te-deum', title: 'Te Deum Laudamus', kind: 'said', role: 'all', optional: true, defaultOn: true, text: TE_DEUM, note: 'Or the Benedicite, omnia opera.' },
+    { id: 'te-deum', title: 'Te Deum Laudamus', kind: 'said', role: 'all', optional: true, text: TE_DEUM, note: 'Or the Benedicite, omnia opera.' },
     { id: 'second-lesson', title: 'The Second Lesson (New Testament)', kind: 'reading', role: 'reader', optional: false },
-    { id: 'benedictus', title: 'Benedictus (St Luke 1)', kind: 'said', role: 'all', optional: true, defaultOn: true, text: BENEDICTUS, note: 'Or the Jubilate Deo (Psalm 100).' },
+    { id: 'benedictus', title: 'Benedictus (St Luke 1)', kind: 'said', role: 'all', optional: true, text: BENEDICTUS, note: 'Or the Jubilate Deo (Psalm 100).' },
     ...commonPrayersAndCollects(false),
-    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true },
   ],
 };
 
@@ -220,15 +220,15 @@ const bcpEveningPrayer: ServiceDefinition = {
   layLed: true,
   timeOfDay: 'evening',
   sections: [
-    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true },
     ...penitentialIntro(),
     { id: 'psalms', title: 'The Psalms appointed', kind: 'psalm', role: 'all', optional: false, note: 'The Psalms for the day from the Prayer Book lectionary.' },
     { id: 'first-lesson', title: 'The First Lesson (Old Testament)', kind: 'reading', role: 'reader', optional: false },
-    { id: 'magnificat', title: 'Magnificat (St Luke 1)', kind: 'said', role: 'all', optional: true, defaultOn: true, text: MAGNIFICAT, note: 'Or the Cantate Domino (Psalm 98).' },
+    { id: 'magnificat', title: 'Magnificat (St Luke 1)', kind: 'said', role: 'all', optional: true, text: MAGNIFICAT, note: 'Or the Cantate Domino (Psalm 98).' },
     { id: 'second-lesson', title: 'The Second Lesson (New Testament)', kind: 'reading', role: 'reader', optional: false },
-    { id: 'nunc-dimittis', title: 'Nunc Dimittis (St Luke 2)', kind: 'said', role: 'all', optional: true, defaultOn: true, text: NUNC_DIMITTIS, note: 'Or the Deus misereatur (Psalm 67).' },
+    { id: 'nunc-dimittis', title: 'Nunc Dimittis (St Luke 2)', kind: 'said', role: 'all', optional: true, text: NUNC_DIMITTIS, note: 'Or the Deus misereatur (Psalm 67).' },
     ...commonPrayersAndCollects(true),
-    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true, defaultOn: false },
+    { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true },
   ],
 };
 

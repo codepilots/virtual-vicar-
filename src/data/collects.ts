@@ -288,9 +288,13 @@ export function getBcpCollect(day: LiturgicalDay): Collect | undefined {
   return BCP_COLLECTS[id];
 }
 
-/** Deep-link to the official Church of England Collects & Post Communions. */
+/**
+ * Deep-link to the official Church of England Collects & Post Communions
+ * (Additional Collects volume). The old `…/churchs-year/collects-and-post-communions`
+ * URL was retired in a site restructure and now lands on a site search.
+ */
 export function officialCollectUrl(_day: LiturgicalDay): string {
-  return 'https://www.churchofengland.org/prayer-and-worship/worship-texts-and-resources/common-worship/churchs-year/collects-and-post-communions';
+  return 'https://www.churchofengland.org/prayer-and-worship/worship-texts-and-resources/common-worship/common-material/collects-and-post-26';
 }
 
 /**
