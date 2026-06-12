@@ -3,10 +3,11 @@
 // hymn suggestions that genuinely follow the day's readings, alongside the
 // local season-based suggester.
 //
-// The endpoint may be CORS-restricted in some browsers; every failure path
-// returns [] and the UI simply shows the local suggestions only.
+// The endpoint may be CORS-restricted in some browsers, so the request runs
+// through the shared direct-then-passthrough chain (cors.ts); every failure
+// path returns [] and the UI simply shows the local suggestions only.
 
-import { cachedJson } from './http';
+import { fetchTextViaCors } from './cors';
 import type { ScriptureRef } from '../../data/readings';
 
 export interface HymnaryHit {
@@ -30,9 +31,23 @@ export async function fetchHymnsForReading(
   limit = 6,
 ): Promise<HymnaryHit[]> {
   const reference = encodeURIComponent(`${ref.book} ${ref.passage.replace(/\./g, ':')}`);
-  const payload = await cachedJson<unknown>(
+  const body = await fetchTextViaCors(
     `https://hymnary.org/api/scripture?reference=${reference}`,
+    (b) => {
+      try {
+        return Array.isArray(JSON.parse(b));
+      } catch {
+        return false;
+      }
+    },
   );
+  if (!body) return [];
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    return [];
+  }
   if (!Array.isArray(payload)) return [];
 
   const hits: HymnaryHit[] = [];

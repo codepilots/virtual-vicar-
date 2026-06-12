@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Settings, ServicePlan } from '../lib/types';
 import {
   buildRunSteps,
@@ -10,6 +10,7 @@ import {
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
+import { loadMidiPlayer, tuneHasPlayableMidi, listenUrl } from '../lib/midi';
 import { loadMidiPlayer, tuneMidiUrl } from '../lib/midi';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
@@ -368,8 +369,10 @@ function HymnStep({ step }: { step: RunStep }) {
           )}
         </div>
       ) : (
-        <p className="subtle" style={{ marginTop: 8 }}>
-          MIDI playback off for this hymn.
+        <p style={{ marginTop: 10 }}>
+          <a className="link" href={listenUrl(tune, hymn.title)} target="_blank" rel="noreferrer">
+            ♪ Hear the tune{tune?.name ? ` (${tune.name})` : ''} ↗
+          </a>
         </p>
       )}
     </div>

@@ -221,7 +221,8 @@ export function HymnPicker({
 
           {(() => {
             const tune = chosen.tunes.find((t) => t.id === value.tuneId);
-            const hasMidi = tuneHasMidi(tune);
+            const playable = tuneHasPlayableMidi(tune);
+            const curated = hasCuratedListenPage(tune);
             return (
               <>
                 <label className="switch">
@@ -234,14 +235,14 @@ export function HymnPicker({
                           ? 'A MIDI file is available for this tune.'
                           : 'No MIDI catalogued — search link provided.'}
                     </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="toggle"
-                    checked={value.playMidi}
-                    onChange={(e) => update({ playMidi: e.target.checked })}
-                  />
-                </label>
+                    <input
+                      type="checkbox"
+                      className="toggle"
+                      checked={value.playMidi}
+                      onChange={(e) => update({ playMidi: e.target.checked })}
+                    />
+                  </label>
+                )}
                 <div className="subtle" style={{ marginTop: 6 }}>
                   {hasMidi ? (
                     <a className="link" href={tuneMidiUrl(tune)} target="_blank" rel="noreferrer">

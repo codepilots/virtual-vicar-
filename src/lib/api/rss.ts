@@ -2,11 +2,11 @@
 //
 // Most blogs don't send CORS headers, so a direct browser fetch often fails.
 // Strategy: try the feed directly first (podcast hosts frequently do allow
-// it), then fall back to the AllOrigins public CORS passthrough. Both paths
-// are cached (see http.ts) and every failure returns [] — the UI keeps the
-// plain site link, so a broken feed never blocks the user.
+// it), then fall back through a chain of public CORS passthroughs (see
+// cors.ts). Every path is cached and every failure returns [] — the UI keeps
+// the plain site link, so a broken feed never blocks the user.
 
-import { cachedText } from './http';
+import { fetchTextViaCors } from './cors';
 
 export interface FeedItem {
   title: string;
@@ -15,10 +15,6 @@ export interface FeedItem {
   date?: string;
   /** Short plain-text summary. */
   summary?: string;
-}
-
-function corsProxyUrl(url: string): string {
-  return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
 }
 
 function text(el: Element | null | undefined): string {
@@ -77,12 +73,10 @@ export function parseFeed(xml: string, limit = 5): FeedItem[] {
   }
 }
 
-/** Fetch and parse a feed: direct first, then via the CORS passthrough. */
+/** Fetch and parse a feed: direct first, then via the passthrough chain. */
 export async function fetchFeed(feedUrl: string, limit = 5): Promise<FeedItem[]> {
-  const direct = await cachedText(feedUrl);
-  const fromDirect = direct ? parseFeed(direct, limit) : [];
-  if (fromDirect.length) return fromDirect;
-
-  const proxied = await cachedText(corsProxyUrl(feedUrl));
-  return proxied ? parseFeed(proxied, limit) : [];
+  // Validate per attempt so a proxy's own error page (often HTTP 200) is
+  // rejected and the next route is tried.
+  const body = await fetchTextViaCors(feedUrl, (b) => parseFeed(b, 1).length > 0);
+  return body ? parseFeed(body, limit) : [];
 }
