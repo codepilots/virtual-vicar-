@@ -206,6 +206,14 @@ export function SettingsScreen({ settings, onChange }: Props) {
             ; in-app playback by html-midi-player.
           </li>
           <li>
+            <strong>Blogs &amp; podcasts</strong> — content belongs to its publishers (Psephizo,
+            Thinking Anglicans, ViaMedia.News, Covenant, Working Preacher, St Mellitus, Premier,
+            Church Times…). Feeds are read directly or via the AllOrigins public passthrough;
+            feed addresses follow each publisher’s convention but are{' '}
+            <span className="unverified">not yet individually verified</span> — a broken feed
+            falls back to the site link.
+          </li>
+          <li>
             <strong>Liturgical calendar</strong> — computed in the app (Easter, seasons, lectionary
             years). The hymn catalogue is a small curated seed; check numbers in your own books.
           </li>

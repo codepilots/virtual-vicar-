@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { fetchDayReadings, type LectionaryResult } from './lectionary';
 import { fetchPassageText, supportsInlineText, type PassageText } from './bibleText';
 import { fetchHymnsForReading, type HymnaryHit } from './hymnary';
+import { fetchFeed, type FeedItem } from './rss';
 import { dayFromIso } from '../plan';
 import type { ScriptureRef } from '../../data/readings';
 
@@ -58,6 +59,38 @@ export function usePassageText(
   }, [key, versionId, online]);
 
   return text;
+}
+
+export interface FeedState {
+  items: FeedItem[];
+  loading: boolean;
+  /** True when a fetch was attempted and produced nothing. */
+  failed: boolean;
+}
+
+/**
+ * Recent items from an RSS/Atom feed. Pass undefined (or online=false) to
+ * skip fetching — e.g. only fetch once the user expands the preview.
+ */
+export function useFeedItems(rssUrl: string | undefined, online: boolean): FeedState {
+  const [state, setState] = useState<FeedState>({ items: [], loading: false, failed: false });
+
+  useEffect(() => {
+    let live = true;
+    if (!rssUrl || !online) {
+      setState({ items: [], loading: false, failed: false });
+      return;
+    }
+    setState({ items: [], loading: true, failed: false });
+    fetchFeed(rssUrl).then((items) => {
+      if (live) setState({ items, loading: false, failed: items.length === 0 });
+    });
+    return () => {
+      live = false;
+    };
+  }, [rssUrl, online]);
+
+  return state;
 }
 
 /** Hymnary.org hymns associated with a reading (Gospel preferred). */

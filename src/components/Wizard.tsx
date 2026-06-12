@@ -16,6 +16,7 @@ import {
 } from '../lib/plan';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
+import { FeedPreview } from './FeedPreview';
 
 interface Props {
   settings: Settings;
@@ -278,6 +279,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
               <a className="link" href={r.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                 Open resource →
               </a>
+              <FeedPreview resource={r} online={settings.useOnlineSources} />
             </div>
           ))}
           <div className="card">

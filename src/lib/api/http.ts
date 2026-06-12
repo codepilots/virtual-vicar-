@@ -66,3 +66,27 @@ export async function cachedJson<T>(url: string, opts: FetchOptions = {}): Promi
     clearTimeout(timer);
   }
 }
+
+/**
+ * GET a text/XML resource (e.g. an RSS feed) with the same cache + timeout +
+ * stale-fallback behaviour as `cachedJson`.
+ */
+export async function cachedText(url: string, opts: FetchOptions = {}): Promise<string | null> {
+  const ttl = opts.ttlMs ?? 6 * 3600_000; // feeds refresh more often
+  const cached = cacheRead<string>(url);
+  if (cached && Date.now() - cached.t < ttl) return cached.v;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 8000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const value = await res.text();
+    cacheWrite(url, value);
+    return value;
+  } catch {
+    return cached ? cached.v : null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

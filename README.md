@@ -78,6 +78,7 @@ schema drift) falls back to the local data and official link-outs.
 | [LectServe](https://www.lectserve.com/) | RCL readings for the chosen date — fills the wizard's readings step and the run-mode reading/psalm slots | `lectionary.ts` |
 | [bible-api.com](https://bible-api.com/) | The passage text itself, shown (and TTS-readable) in run mode for public-domain versions (KJV, WEB); copyrighted versions stay link-out only | `bibleText.ts` |
 | [Hymnary.org scripture API](https://hymnary.org/api/scripture) | Hymn suggestions that match the day's readings, alongside the local season-based suggester | `hymnary.ts` |
+| RSS/Atom feeds | Latest posts/episodes from curated Anglican blogs & podcasts (Psephizo, Thinking Anglicans, ViaMedia, Covenant, Sermon Brainwave, GodPod…), shown inline on the address step. Direct fetch first, then the AllOrigins public CORS passthrough; failures fall back to the site link | `rss.ts` |
 
 LectServe's payload shape has varied over time, so the client hunts the JSON
 for reading-like strings and keeps only those that parse as real scripture
