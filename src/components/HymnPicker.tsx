@@ -95,6 +95,10 @@ export function HymnPicker({
 
       {!chosen && expanded && (
         <div style={{ marginTop: 10 }}>
+          <p className="verify-note">
+            <span className="unverified">⚠ Book numbers are hand-indexed and not yet verified</span>{' '}
+            — confirm against your book’s own index before announcing.
+          </p>
           {suggestions.length === 0 && (
             <p className="subtle">No hymns match your books yet — add hymn books in Settings.</p>
           )}
@@ -136,7 +140,10 @@ export function HymnPicker({
             {Object.entries(chosen.numbers)
               .filter(([b]) => ownedBookIds.length === 0 || ownedBookIds.includes(b))
               .map(([b, n]) => `${getHymnBook(b)?.abbreviation ?? b} ${n}`)
-              .join(' · ') || 'not in your books'}
+              .join(' · ') || 'number not indexed — check your book’s index'}{' '}
+            <span className="unverified" title="Numbers are hand-indexed; verify in the book">
+              ⚠
+            </span>
           </div>
 
           {chosen.tunes.length > 1 && (

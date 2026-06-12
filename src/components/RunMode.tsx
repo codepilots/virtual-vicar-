@@ -12,6 +12,7 @@ import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
 import { loadMidiPlayer } from '../lib/midi';
 import { useWakeLock } from '../lib/useWakeLock';
+import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
 
 interface Props {
@@ -239,12 +240,7 @@ function StepBody({
         </div>
       );
     case 'prayers':
-      return (
-        <div className="muted-box">
-          Lead the intercessions — for the Church, the world, the local community, the sick and the
-          departed — in your own words, or use a prepared form.
-        </div>
-      );
+      return <PrayersStep />;
     default:
       return step.text ? (
         <>
@@ -255,6 +251,61 @@ function StepBody({
         <p className="subtle">—</p>
       );
   }
+}
+
+/**
+ * The intercessions: a classic structure for praying freely, plus prepared
+ * BCP forms that expand on demand so the screen stays manageable.
+ */
+function PrayersStep() {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <div>
+      <div className="muted-box">
+        Pray in your own words — a classic shape:
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          {INTERCESSION_PROMPTS.map((p, i) => (
+            <li key={i}>{p}</li>
+          ))}
+        </ul>
+      </div>
+      <p className="subtle" style={{ margin: '12px 0 6px' }}>
+        Or use a prepared form:
+      </p>
+      {PREPARED_PRAYERS.map((p) => (
+        <div key={p.id} className="card" style={{ padding: 12 }}>
+          <div className="title-row">
+            <div>
+              <strong>{p.title}</strong>
+              {p.occasion && <div className="subtle" style={{ fontSize: 12 }}>{p.occasion}</div>}
+            </div>
+            <button
+              className="btn ghost small"
+              onClick={() => setOpenId(openId === p.id ? null : p.id)}
+            >
+              {openId === p.id ? 'Hide' : 'Read'}
+            </button>
+          </div>
+          {openId === p.id && (
+            <>
+              <p className="spoken" style={{ marginTop: 8 }}>
+                {p.text}
+              </p>
+              <p className="verify-note">
+                Source: {p.source}.{' '}
+                {!p.verified && (
+                  <span className="unverified">
+                    ⚠ Hand-transcribed, not yet proofread — please check against a printed copy
+                    before use.
+                  </span>
+                )}
+              </p>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /**
