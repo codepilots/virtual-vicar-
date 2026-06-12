@@ -5,6 +5,8 @@
 // so the user can include or omit them when configuring, and `role` drives the
 // step-by-step run mode and the text-to-speech "vicar voice".
 
+import { BCP_SERVICES } from './bcp';
+
 export type SectionKind =
   | 'rubric' // an instruction, not spoken aloud
   | 'said' // spoken text (officiant and/or all)
@@ -144,6 +146,7 @@ export const SERVICES: ServiceDefinition[] = [
   eveningPrayer,
   nightPrayer,
   serviceOfTheWord,
+  ...BCP_SERVICES,
 ];
 
 export function getService(id: string): ServiceDefinition | undefined {

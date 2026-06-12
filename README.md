@@ -14,7 +14,7 @@ officiant's voice directly via text‑to‑speech.
 
 | Requirement | How it's met |
 | --- | --- |
-| Choose from a list of suitable (lay-led) services | `src/data/services.ts` — four offices, each an ordered list of sections |
+| Choose from a list of suitable (lay-led) services | `src/data/services.ts` (Common Worship offices) + `src/data/bcp.ts` (BCP 1662 Mattins & Evensong, full text) |
 | Indicate which optional parts to include / omit | Wizard step 2 — every optional section has a toggle; fixed parts are locked on |
 | Correct readings & collect for the day | `src/data/calendar.ts` computes the liturgical day → `readings.ts` / `collects.ts` resolve them, with deep‑links to the official C of E lectionary/collects as a guaranteed fallback |
 | Choice of Bible versions, linked to book/chapter/verse | `src/data/bibleVersions.ts` builds passage URLs (NRSVA, NIVUK, ESV, KJV, CEV, MSG…) |
@@ -66,19 +66,27 @@ The **liturgical calendar engine is fully implemented and verified** (Easter
 computus, movable feasts, seasons, Sunday naming, Proper numbers, and both the
 Sunday RCL year and the Daily Office year).
 
-## Scaffolded content (intentional)
+## Content: complete vs scaffolded
 
-To keep the repository free of copyright liturgical text, the following layers
-ship as **structured scaffolds** with a few illustrative entries plus reliable
-deep‑links to the official Church of England texts, so every day still resolves:
+**Complete and shipping with full text:**
 
-- **Liturgy wording** in `services.ts` (section `text` placeholders)
+- **Book of Common Prayer (1662)** — Morning Prayer (Mattins) and Evening
+  Prayer (Evensong) in `src/data/bcp.ts`, with the full public‑domain wording:
+  the Exhortation, General Confession, Venite, Te Deum, Benedictus, Magnificat,
+  Nunc Dimittis, Apostles' Creed, Suffrages, the three Collects, the Prayer of
+  St Chrysostom and the Grace. The one priestly act (the Absolution) is handled
+  with a rubric so a lay person leads correctly.
+
+**Scaffolded** (structured data + illustrative entries + official deep‑links so
+every day still resolves) — these contain modern, copyright material, so populate
+them with data you are licensed to use:
+
+- **Common Worship liturgy wording** in `services.ts` (section `text` placeholders)
 - **Collects** in `collects.ts`
 - **Lectionary readings** in `readings.ts`
 - **Hymn catalogue / MIDI URLs** in `hymns.ts`
 
 The data *shapes* are complete, so the wizard and run mode work end‑to‑end.
-Populate these tables with the authorised texts/data you are licensed to use.
 
 ## Licence & attribution
 
