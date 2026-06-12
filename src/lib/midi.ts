@@ -34,20 +34,18 @@ export function loadMidiPlayer(): Promise<void> {
   return loaderPromise;
 }
 
-/** True when a tune has a real, same-origin MIDI file we can embed and play. */
-export function tuneHasPlayableMidi(tune: Tune | undefined): boolean {
-  return Boolean(tune?.midiFile);
+export function tuneHasMidi(tune: Tune | undefined): boolean {
+  return Boolean(tune?.midiFile || tune?.midiUrl);
 }
 
 /**
- * The best link to hear a tune: its dedicated info/listen page when known,
- * otherwise a YouTube search for the tune name (most hymn tunes have sung
- * recordings there). Always returns a usable URL.
+ * The playable/openable MIDI URL for a tune. Bundled public-domain files
+ * (public/midi/, credited in public/midi/CREDITS.md) win over external links
+ * because they work offline and can be embedded in the player directly.
  */
-export function listenUrl(tune: Tune | undefined, hymnTitle: string): string {
-  if (tune?.listenUrl) return tune.listenUrl;
-  const query = tune?.name ? `${tune.name} hymn tune` : `${hymnTitle} hymn`;
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+export function tuneMidiUrl(tune: Tune | undefined): string | undefined {
+  if (tune?.midiFile) return `${import.meta.env.BASE_URL}midi/${tune.midiFile}`;
+  return tune?.midiUrl;
 }
 
 /** Whether the listen link points at a curated tune page (vs a search). */
