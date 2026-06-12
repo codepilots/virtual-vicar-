@@ -33,6 +33,11 @@ export interface ServiceSection {
   text?: string;
   /** Short helper note shown to the user. */
   note?: string;
+  /**
+   * True when `text` is a hand-transcription that has not yet been proofread
+   * against a printed copy — surfaced as a warning in the UI.
+   */
+  unverified?: boolean;
 }
 
 export interface ServiceDefinition {

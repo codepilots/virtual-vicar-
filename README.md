@@ -44,12 +44,18 @@ offline; deep‑links (Bible passages, MIDI files, lectionary) need a connection
 These work entirely in the browser — no server, no API key:
 
 - **Offline psalms** — the public‑domain **Coverdale Psalter** (`psalter.ts`) is
-  bundled for the most‑used psalms, so a *whole‑psalm* slot shows the text and
-  reads aloud offline; verse ranges keep their Bible link (so nothing is shown
-  out of context).
-- **BCP collects** — the 1662 Collects of the Day (`collects.ts`, public domain)
-  are bundled and keyed to the calendar engine; the Prayer Book path no longer
-  needs the network for its collect.
+  bundled for 33 of the most‑appointed psalms, so a *whole‑psalm* slot shows the
+  text and reads aloud offline; verse ranges keep their Bible link (so nothing
+  is shown out of context).
+- **BCP collects** — the full 1662 Collects of the Day (`collects.ts`, public
+  domain): Advent through Trinity 24 plus Stir‑up, with weekday/feast aliases
+  and weeks‑after‑Trinity computed from the date of Easter (the calendar keys
+  Ordinary Time by Proper number; the BCP keys by Trinity week). Every day of
+  the year resolves offline on the Prayer Book path.
+- **Provenance marking** — bundled BCP texts, collects and psalms are
+  hand‑transcribed and carry `verified`/`unverified` flags until proofread
+  against a printed copy; the UI marks them ⚠ wherever they appear (run mode,
+  wizard, print sheet), and Settings → *About & sources* lists all credits.
 - **Printable order of service** — `PrintSheet` assembles the whole plan into a
   clean document for the leader or printed pew sheets (`window.print()` → PDF).
 - **Run‑mode practicalities** — Screen Wake Lock keeps the phone awake while

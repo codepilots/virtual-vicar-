@@ -155,11 +155,15 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                   <p className="spoken" style={{ fontSize: 16 }}>
                     {c.collect}
                   </p>
-                  {c.source && (
-                    <p className="subtle" style={{ fontSize: 12 }}>
-                      {c.source}
-                    </p>
-                  )}
+                  <p className="verify-note">
+                    {c.source && <span>Source: {c.source}.</span>}{' '}
+                    {c.verified === false && (
+                      <span className="unverified">
+                        ⚠ Hand-transcribed, not yet proofread — please check against the official
+                        text below before use.
+                      </span>
+                    )}
+                  </p>
                 </>
               ) : (
                 <p className="subtle">Not catalogued offline.</p>

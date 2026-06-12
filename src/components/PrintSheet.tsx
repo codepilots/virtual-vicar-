@@ -69,7 +69,12 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
                 <p className="sheet-ref">
                   {step.refs.map((r) => `${r.label ? `${r.label}: ` : ''}${r.book} ${r.passage}`).join('  ·  ')}
                 </p>
-                {step.text && <p className="sheet-text">{step.text}</p>}
+                {step.text && (
+                  <p className="sheet-text">
+                    {step.text}
+                    {step.unverified && <span className="sheet-flag"> ⚠</span>}
+                  </p>
+                )}
                 {!step.text && bible && (
                   <p className="sheet-ref subtle">
                     Read in {bible.code}: {step.refs.map((r) => `${r.book} ${r.passage}`).join('; ')}
@@ -77,7 +82,10 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
                 )}
               </>
             ) : step.text ? (
-              <p className="sheet-text">{step.text}</p>
+              <p className="sheet-text">
+                {step.text}
+                {step.unverified && <span className="sheet-flag"> ⚠</span>}
+              </p>
             ) : step.kind === 'prayers' ? (
               <p className="sheet-text subtle">Intercessions.</p>
             ) : step.kind === 'sermon' ? (
@@ -89,8 +97,9 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
         ))}
 
         <footer className="sheet-foot">
-          Prepared with Virtual Vicar. Liturgical texts © their respective owners;
-          Coverdale Psalter &amp; BCP collects are public domain.
+          Prepared with Virtual Vicar. Liturgical texts © their respective owners; BCP 1662 texts,
+          collects &amp; Coverdale Psalter are public domain. Items marked ⚠ are hand-transcribed
+          and not yet proofread — please check against a printed copy before the service.
         </footer>
       </article>
     </div>

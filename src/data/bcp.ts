@@ -232,4 +232,18 @@ const bcpEveningPrayer: ServiceDefinition = {
   ],
 };
 
-export const BCP_SERVICES: ServiceDefinition[] = [bcpMorningPrayer, bcpEveningPrayer];
+// PROVENANCE: every fixed text above is hand-transcribed from the 1662 book
+// and has not yet been proofread against a printed copy. Mark them so the UI
+// can say so honestly (rubrics are our own wording, not transcriptions).
+function markUnverified(service: ServiceDefinition): ServiceDefinition {
+  return {
+    ...service,
+    sections: service.sections.map((s: ServiceSection) =>
+      s.text && s.kind !== 'rubric' ? { ...s, unverified: true } : s,
+    ),
+  };
+}
+
+export const BCP_SERVICES: ServiceDefinition[] = [bcpMorningPrayer, bcpEveningPrayer].map(
+  markUnverified,
+);

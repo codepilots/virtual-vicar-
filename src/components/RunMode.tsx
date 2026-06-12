@@ -64,7 +64,12 @@ export function RunMode({ plan, settings, onExit }: Props) {
   );
   const step: RunStep | undefined =
     rawStep && passage && !rawStep.text
-      ? { ...rawStep, text: passage.text, attribution: passage.translationName }
+      ? {
+          ...rawStep,
+          text: passage.text,
+          attribution: `${passage.translationName} · via bible-api.com`,
+          unverified: false, // fetched from source, not a transcription
+        }
       : rawStep;
 
   // Auto-read officiant text when enabled and the step changes.
@@ -190,11 +195,7 @@ function StepBody({
       return (
         <div>
           {step.text && <p className="spoken">{step.text}</p>}
-          {step.attribution && (
-            <p className="subtle" style={{ fontSize: 12 }}>
-              {step.attribution} · via bible-api.com
-            </p>
-          )}
+          <SourceNote step={step} />
           <ul className="refs">
             {(step.refs ?? []).map((ref, i) => (
               <li key={i}>
@@ -222,6 +223,7 @@ function StepBody({
           ) : (
             <p className="subtle">Collect not catalogued offline.</p>
           )}
+          <SourceNote step={step} />
           {step.fallbackUrl && (
             <a className="link" href={step.fallbackUrl} target="_blank" rel="noreferrer">
               View the authorised collect →
@@ -245,11 +247,33 @@ function StepBody({
       );
     default:
       return step.text ? (
-        <p className="spoken">{step.text}</p>
+        <>
+          <p className="spoken">{step.text}</p>
+          <SourceNote step={step} />
+        </>
       ) : (
         <p className="subtle">—</p>
       );
   }
+}
+
+/**
+ * Source credit and verification status for a step's text. Hand-transcribed
+ * texts that haven't been proofread against a printed copy are clearly marked
+ * so the leader can check them before the service.
+ */
+function SourceNote({ step }: { step: RunStep }) {
+  if (!step.text || (!step.attribution && !step.unverified)) return null;
+  return (
+    <p className="verify-note">
+      {step.attribution && <span>Source: {step.attribution}.</span>}{' '}
+      {step.unverified && (
+        <span className="unverified">
+          ⚠ Hand-transcribed, not yet proofread — please check against a printed copy before use.
+        </span>
+      )}
+    </p>
+  );
 }
 
 function HymnStep({ step }: { step: RunStep }) {

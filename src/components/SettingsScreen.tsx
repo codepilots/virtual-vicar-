@@ -170,6 +170,47 @@ export function SettingsScreen({ settings, onChange }: Props) {
           </div>
         </div>
       </div>
+
+      <div className="card">
+        <h3>About &amp; sources</h3>
+        <ul className="credits">
+          <li>
+            <strong>BCP 1662 services, collects &amp; Coverdale Psalter</strong> — public domain.
+            Hand-transcribed for this app and <em>not yet proofread</em>; unchecked texts are
+            marked <span className="unverified">⚠</span> wherever they appear. Please verify
+            against a printed Prayer Book before use.
+          </li>
+          <li>
+            <strong>Common Worship</strong> texts — © The Archbishops’ Council. Not bundled; the
+            app links to the official Church of England pages.
+          </li>
+          <li>
+            <strong>Readings</strong> — Revised Common Lectionary via{' '}
+            <a className="link" href="https://www.lectserve.com/" target="_blank" rel="noreferrer">
+              LectServe
+            </a>
+            , with links to the official C of E lectionary.
+          </li>
+          <li>
+            <strong>Bible text</strong> — public-domain translations via{' '}
+            <a className="link" href="https://bible-api.com/" target="_blank" rel="noreferrer">
+              bible-api.com
+            </a>
+            ; other versions link to BibleGateway.
+          </li>
+          <li>
+            <strong>Hymn data &amp; MIDI</strong> —{' '}
+            <a className="link" href="https://hymnary.org/" target="_blank" rel="noreferrer">
+              Hymnary.org
+            </a>
+            ; in-app playback by html-midi-player.
+          </li>
+          <li>
+            <strong>Liturgical calendar</strong> — computed in the app (Easter, seasons, lectionary
+            years). The hymn catalogue is a small curated seed; check numbers in your own books.
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }

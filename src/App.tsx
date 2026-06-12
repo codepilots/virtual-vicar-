@@ -92,7 +92,9 @@ export function App() {
 
       <div className="footer-note">
         For lay-led offices only (Morning &amp; Evening Prayer, Night Prayer, A Service of the
-        Word). Always check your incumbent’s guidance. Liturgical texts © their respective owners.
+        Word). Always check your incumbent’s guidance. Liturgical texts © their respective owners;
+        bundled public-domain texts are hand-transcribed and unchecked items are marked ⚠ — see
+        Settings → About &amp; sources.
       </div>
     </div>
   );

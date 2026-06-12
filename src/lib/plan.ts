@@ -72,8 +72,10 @@ export interface RunStep {
   role: ServiceSection['role'];
   /** Spoken/printed text where present. */
   text?: string;
-  /** Attribution line for fetched text (e.g. the Bible translation name). */
+  /** Attribution line for the text (translation name, source book…). */
   attribution?: string;
+  /** True when the text is a transcription not yet proofread — shown in UI. */
+  unverified?: boolean;
   note?: string;
   /** For reading/psalm steps: the scripture references to show with links. */
   refs?: ScriptureRef[];
@@ -104,7 +106,18 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
 
   for (const s of service.sections) {
     if (!isSectionIncluded(plan, s)) continue;
-    const base = { sectionId: s.id, title: s.title, role: s.role, note: s.note };
+    const base = {
+      sectionId: s.id,
+      title: s.title,
+      role: s.role,
+      note: s.note,
+      unverified: s.unverified,
+      // Credit the source of fixed transcribed texts (e.g. BCP 1662).
+      attribution:
+        s.text && s.unverified && service.tradition === 'Book of Common Prayer'
+          ? 'The Book of Common Prayer (1662)'
+          : undefined,
+    };
 
     switch (s.kind) {
       case 'reading': {
@@ -118,23 +131,28 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
         });
         break;
       }
-      case 'psalm':
+      case 'psalm': {
+        // Fixed canticles (Venite etc.) carry their own text; an appointed
+        // psalm slot is filled from the bundled Coverdale Psalter when whole.
+        const psalter = s.text ? undefined : offlinePsalmText(psalmRefs);
         steps.push({
           ...base,
           kind: 'psalm',
           refs: psalmRefs,
-          // Fixed canticles (Venite etc.) carry their own text; an appointed
-          // psalm slot is filled from the bundled Coverdale Psalter when whole.
-          text: s.text ?? offlinePsalmText(psalmRefs),
-          attribution: s.text ? undefined : offlinePsalmText(psalmRefs) ? 'Coverdale Psalter (BCP)' : undefined,
+          text: s.text ?? psalter,
+          attribution: s.text ? base.attribution : psalter ? 'Coverdale Psalter (BCP 1662)' : undefined,
+          unverified: s.text ? s.unverified : psalter ? true : undefined,
           fallbackUrl: officialLectionaryUrl(day),
         });
         break;
+      }
       case 'collect':
         steps.push({
           ...base,
           kind: 'collect',
           text: collect?.collect,
+          attribution: collect?.source,
+          unverified: collect?.verified === false,
           fallbackUrl: officialCollectUrl(day),
         });
         break;
@@ -188,7 +206,8 @@ export function overlayLectionary(steps: RunStep[], refs: ScriptureRef[]): RunSt
         ...s,
         refs: psalms,
         text,
-        attribution: s.text ? s.attribution : text ? 'Coverdale Psalter (BCP)' : undefined,
+        attribution: s.text ? s.attribution : text ? 'Coverdale Psalter (BCP 1662)' : undefined,
+        unverified: s.text ? s.unverified : text ? true : undefined,
       };
     }
     return s;
