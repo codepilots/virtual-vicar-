@@ -156,6 +156,10 @@ export const ADDRESS_RESOURCES: AddressResource[] = [
   },
 ];
 
+export function getAddressResource(id: string): AddressResource | undefined {
+  return ADDRESS_RESOURCES.find((r) => r.id === id);
+}
+
 export function suggestAddressResources(
   season: Season,
   congregation: CongregationType | null,

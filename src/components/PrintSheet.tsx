@@ -89,7 +89,21 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
             ) : step.kind === 'prayers' ? (
               <p className="sheet-text subtle">Intercessions.</p>
             ) : step.kind === 'sermon' ? (
-              <p className="sheet-text subtle">The Address.</p>
+              <>
+                <p className="sheet-text subtle">
+                  The Address.
+                  {step.address?.itemTitle
+                    ? ` Drawing on “${step.address.itemTitle}”${step.address.resourceTitle ? ` — ${step.address.resourceTitle}` : ''}.`
+                    : step.address?.resourceTitle
+                      ? ` Drawing on ${step.address.resourceTitle}.`
+                      : ''}
+                </p>
+                {step.address?.notes && (
+                  <p className="sheet-text" style={{ whiteSpace: 'pre-wrap' }}>
+                    {step.address.notes}
+                  </p>
+                )}
+              </>
             ) : null}
 
             {step.note && <p className="sheet-note">{step.note}</p>}

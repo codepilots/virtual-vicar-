@@ -21,6 +21,9 @@ export interface HymnChoice {
 export interface AddressChoice {
   /** A chosen resource id, or null if the leader will prepare their own. */
   resourceId: string | null;
+  /** A specific post/episode picked from the resource's feed, if any. */
+  itemTitle?: string;
+  itemUrl?: string;
   notes?: string;
 }
 

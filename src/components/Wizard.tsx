@@ -316,15 +316,37 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                 type="checkbox"
                 className="toggle"
                 checked={plan.address.resourceId === null}
-                onChange={() => update({ address: { ...plan.address, resourceId: null } })}
+                onChange={() =>
+                  update({
+                    address: {
+                      ...plan.address,
+                      resourceId: null,
+                      itemTitle: undefined,
+                      itemUrl: undefined,
+                    },
+                  })
+                }
               />
             </label>
           </div>
+          {plan.address.itemTitle && (
+            <p className="subtle">
+              Chosen for the address: <strong>“{plan.address.itemTitle}”</strong>
+            </p>
+          )}
           {suggestAddressResources(day.season, settings.congregation).map((r) => (
             <div
               key={r.id}
               className="card pressable"
-              onClick={() => update({ address: { ...plan.address, resourceId: r.id } })}
+              onClick={() =>
+                update({
+                  address:
+                    plan.address.resourceId === r.id
+                      ? { ...plan.address }
+                      : // Switching resource drops a post picked from the old one.
+                        { ...plan.address, resourceId: r.id, itemTitle: undefined, itemUrl: undefined },
+                })
+              }
               style={{
                 borderColor: plan.address.resourceId === r.id ? 'var(--primary)' : undefined,
                 borderWidth: plan.address.resourceId === r.id ? 2 : 1,
@@ -339,7 +361,21 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
               <a className="link" href={r.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                 Open resource →
               </a>
-              <FeedPreview resource={r} online={settings.useOnlineSources} />
+              <FeedPreview
+                resource={r}
+                online={settings.useOnlineSources}
+                selectedUrl={plan.address.resourceId === r.id ? plan.address.itemUrl : undefined}
+                onSelectItem={(item) =>
+                  update({
+                    address: {
+                      ...plan.address,
+                      resourceId: r.id,
+                      itemTitle: item.title,
+                      itemUrl: item.link,
+                    },
+                  })
+                }
+              />
             </div>
           ))}
           <div className="card">
@@ -369,7 +405,12 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                 ).length
               }{' '}
               sections · {plan.hymns.length} hymn(s) ·{' '}
-              {plan.address.resourceId ? 'address resource chosen' : 'own address'} · about{' '}
+              {plan.address.itemTitle
+                ? `address: “${plan.address.itemTitle}”`
+                : plan.address.resourceId
+                  ? 'address resource chosen'
+                  : 'own address'}{' '}
+              · about{' '}
               <strong>{estMinutes} min</strong>
             </div>
           </div>

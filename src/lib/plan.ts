@@ -2,6 +2,7 @@
 // steps shown in run mode.
 
 import { getLiturgicalDay, type LiturgicalDay } from '../data/calendar';
+import { getAddressResource } from '../data/addressResources';
 import { getService, type ServiceSection } from '../data/services';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
@@ -89,6 +90,14 @@ export interface RunStep {
   fallbackUrl?: string;
   /** For hymn steps: the chosen hymn for this section. */
   hymn?: HymnChoice;
+  /** For sermon steps: what the leader planned to draw on. */
+  address?: {
+    resourceTitle?: string;
+    resourceAuthor?: string;
+    itemTitle?: string;
+    itemUrl?: string;
+    notes?: string;
+  };
 }
 
 /**
@@ -170,9 +179,28 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
       case 'hymn':
         steps.push({ ...base, kind: 'hymn', hymn: hymnForSection(plan, s.id) });
         break;
-      case 'sermon':
-        steps.push({ ...base, kind: 'sermon', text: s.text });
+      case 'sermon': {
+        const resource = plan.address.resourceId
+          ? getAddressResource(plan.address.resourceId)
+          : undefined;
+        const hasAddressInfo =
+          resource || plan.address.itemTitle || plan.address.notes;
+        steps.push({
+          ...base,
+          kind: 'sermon',
+          text: s.text,
+          address: hasAddressInfo
+            ? {
+                resourceTitle: resource?.title,
+                resourceAuthor: resource?.author,
+                itemTitle: plan.address.itemTitle,
+                itemUrl: plan.address.itemUrl,
+                notes: plan.address.notes,
+              }
+            : undefined,
+        });
         break;
+      }
       case 'prayers':
         steps.push({ ...base, kind: 'prayers', text: s.text });
         break;

@@ -234,9 +234,38 @@ function StepBody({
       );
     case 'sermon':
       return (
-        <div className="muted-box">
-          The address. Deliver your talk or play your chosen resource. Use the plan’s notes as your
-          outline.
+        <div>
+          {step.address?.itemTitle || step.address?.resourceTitle ? (
+            <div className="muted-box">
+              Drawing on{' '}
+              {step.address.itemTitle ? (
+                <>
+                  <strong>“{step.address.itemTitle}”</strong>
+                  {step.address.resourceTitle ? ` — ${step.address.resourceTitle}` : ''}
+                </>
+              ) : (
+                <strong>{step.address.resourceTitle}</strong>
+              )}
+              {step.address.resourceAuthor ? ` (${step.address.resourceAuthor})` : ''}
+              {step.address.itemUrl && (
+                <>
+                  {' '}
+                  <a className="link" href={step.address.itemUrl} target="_blank" rel="noreferrer">
+                    Open ↗
+                  </a>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="muted-box">
+              The address. Deliver your talk or play your chosen resource.
+            </div>
+          )}
+          {step.address?.notes && (
+            <p className="spoken" style={{ marginTop: 10, whiteSpace: 'pre-wrap' }}>
+              {step.address.notes}
+            </p>
+          )}
         </div>
       );
     case 'prayers':
