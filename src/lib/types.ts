@@ -28,6 +28,11 @@ export interface AddressChoice {
 export interface Settings {
   bibleVersionId: string;
   ownedHymnBookIds: string[];
+  /**
+   * Only suggest hymns where at least one tune has a MIDI bundled with the
+   * app — i.e. the tune can always be played, even offline.
+   */
+  onlyBundledMidi: boolean;
   congregation: import('../data/congregation').CongregationType | null;
   /**
    * Fetch from online sources (LectServe lectionary, bible-api.com passage
@@ -50,6 +55,13 @@ export interface ServicePlan {
   dateIso: string;
   /** Section id -> included?  (only meaningful for optional sections). */
   includedSections: Record<string, boolean>;
+  /**
+   * Section id -> text the user pasted from an official source (e.g. the
+   * C of E website), so placeholdered or link-out sections can be shown,
+   * printed and read aloud offline. Stored locally with the plan only; the
+   * user is responsible for holding the right to reproduce what they paste.
+   */
+  customTexts?: Record<string, string>;
   hymns: HymnChoice[];
   address: AddressChoice;
 }
@@ -57,6 +69,7 @@ export interface ServicePlan {
 export const DEFAULT_SETTINGS: Settings = {
   bibleVersionId: 'nrsva',
   ownedHymnBookIds: ['neh', 'am'],
+  onlyBundledMidi: false,
   congregation: null,
   useOnlineSources: true,
   ttsEnabled: true,

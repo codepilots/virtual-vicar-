@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Season } from '../data/calendar';
 import type { CongregationType } from '../data/congregation';
-import { suggestHymns, getHymn, getHymnBook, type Hymn } from '../data/hymns';
+import { suggestHymns, getHymn, getHymnBook, hymnHasBundledMidi, type Hymn } from '../data/hymns';
 import { tuneHasMidi, tuneMidiUrl, midiSearchUrl } from '../lib/midi';
 import { useHymnaryHits } from '../lib/api/hooks';
 import type { ScriptureRef } from '../data/readings';
@@ -17,6 +17,8 @@ interface Props {
   readingRefs: ScriptureRef[];
   /** Whether online lookups are enabled. */
   online: boolean;
+  /** Only offer hymns whose tune MIDI is bundled with the app. */
+  onlyBundledMidi: boolean;
   value: HymnChoice | undefined;
   onChange: (choice: HymnChoice | undefined) => void;
 }
@@ -38,12 +40,13 @@ export function HymnPicker({
   ownedBookIds,
   readingRefs,
   online,
+  onlyBundledMidi,
   value,
   onChange,
 }: Props) {
   const suggestions = useMemo(
-    () => suggestHymns(season, congregation, ownedBookIds),
-    [season, congregation, ownedBookIds],
+    () => suggestHymns(season, congregation, ownedBookIds, onlyBundledMidi),
+    [season, congregation, ownedBookIds, onlyBundledMidi],
   );
   const [expanded, setExpanded] = useState(false);
   const chosen = value ? getHymn(value.hymnId) : undefined;
@@ -52,7 +55,8 @@ export function HymnPicker({
   const hymnaryHits = useHymnaryHits(expanded && !chosen ? readingRefs : [], online);
 
   const choose = (hymn: Hymn) => {
-    const tune = hymn.tunes[0];
+    // When restricted to bundled tunes, start on a tune that actually has one.
+    const tune = (onlyBundledMidi ? hymn.tunes.find((t) => t.midiFile) : undefined) ?? hymn.tunes[0];
     onChange({
       sectionId,
       hymnId: hymn.id,
@@ -99,6 +103,11 @@ export function HymnPicker({
             <span className="unverified">⚠ Book numbers are hand-indexed and not yet verified</span>{' '}
             — confirm against your book’s own index before announcing.
           </p>
+          {onlyBundledMidi && (
+            <p className="subtle">
+              Showing only hymns with a bundled tune (playable offline) — change in Settings.
+            </p>
+          )}
           {suggestions.length === 0 && (
             <p className="subtle">No hymns match your books yet — add hymn books in Settings.</p>
           )}
@@ -106,6 +115,7 @@ export function HymnPicker({
             <div key={h.id} className="card pressable" onClick={() => choose(h)}>
               <strong>{h.title}</strong>
               <div className="subtle">
+                {hymnHasBundledMidi(h) ? '♫ tune included · ' : ''}
                 {h.seasons.length ? h.seasons.join(', ') : 'Any season'} ·{' '}
                 {Object.entries(h.numbers)
                   .filter(([b]) => ownedBookIds.length === 0 || ownedBookIds.includes(b))

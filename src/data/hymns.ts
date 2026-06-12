@@ -158,17 +158,25 @@ export function getHymnBook(id: string): HymnBook | undefined {
   return HYMN_BOOKS.find((b) => b.id === id);
 }
 
+/** True if any of the hymn's tunes has a MIDI bundled with the app. */
+export function hymnHasBundledMidi(hymn: Hymn): boolean {
+  return hymn.tunes.some((t) => Boolean(t.midiFile));
+}
+
 /**
  * Suggest hymns for the day, scored by season and congregation match, and by
  * whether we can point to a number in one of the user's books. Hymns whose
  * numbers aren't indexed still appear (most are in every major book — check
- * the book's own index), just ranked lower.
+ * the book's own index), just ranked lower. With `onlyBundledMidi`, only
+ * hymns whose tune MIDI ships with the app are offered.
  */
 export function suggestHymns(
   season: Season,
   congregation: CongregationType | null,
   ownedBookIds: string[],
+  onlyBundledMidi = false,
 ): Hymn[] {
+  const pool = onlyBundledMidi ? HYMNS.filter(hymnHasBundledMidi) : HYMNS;
   const owned = new Set(ownedBookIds);
   const score = (h: Hymn): number => {
     let s = 0;
@@ -179,5 +187,5 @@ export function suggestHymns(
     if (ownedBookIds.length > 0 && Object.keys(h.numbers).some((b) => owned.has(b))) s += 2;
     return s;
   };
-  return [...HYMNS].sort((a, b) => score(b) - score(a));
+  return [...pool].sort((a, b) => score(b) - score(a));
 }

@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS, type Settings, type ServicePlan } from './types';
 
 const SETTINGS_KEY = 'vv.settings.v1';
 const PLAN_KEY = 'vv.plan.v1';
+const SECTION_PREFS_KEY = 'vv.sectionPrefs.v1';
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -52,4 +53,19 @@ export function savePlan(plan: ServicePlan | null): void {
     return;
   }
   write(PLAN_KEY, plan);
+}
+
+// The user's last on/off choices for a service's optional sections, keyed by
+// service id. Used as the starting point next time that service is prepared
+// (a fresh service with no saved choices starts with everything off).
+
+type SectionPrefs = Record<string, Record<string, boolean>>;
+
+export function loadSectionPrefs(serviceId: string): Record<string, boolean> {
+  return read<SectionPrefs>(SECTION_PREFS_KEY, {})[serviceId] ?? {};
+}
+
+export function saveSectionPrefs(serviceId: string, sections: Record<string, boolean>): void {
+  const all = read<SectionPrefs>(SECTION_PREFS_KEY, {});
+  write(SECTION_PREFS_KEY, { ...all, [serviceId]: sections });
 }
