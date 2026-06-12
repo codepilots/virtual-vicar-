@@ -1,0 +1,47 @@
+# Build and deploy the PWA to GitHub Pages on every push to main.
+#
+# One-time setup: repository Settings → Pages → Source: "GitHub Actions".
+# The app is then served at https://<owner>.github.io/<repo>/ — open it on a
+# phone and "Add to Home Screen" to install.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Project pages are served from /<repo>/, so set the Vite base path.
+      - run: VV_BASE="/${GITHUB_REPOSITORY#*/}/" npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
