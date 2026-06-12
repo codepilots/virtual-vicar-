@@ -5,7 +5,17 @@ import { getLiturgicalDay, type LiturgicalDay } from '../data/calendar';
 import { getService, type ServiceSection } from '../data/services';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
+import { getPsalmText, GLORIA } from '../data/psalter';
 import type { ServicePlan, Settings, HymnChoice } from './types';
+
+/** Coverdale text for whichever bundled psalms a set of refs names. */
+function offlinePsalmText(refs: ScriptureRef[]): string | undefined {
+  const parts = refs
+    .map((r) => getPsalmText(r))
+    .filter((p): p is NonNullable<typeof p> => p !== null)
+    .map((p) => `Psalm ${p.number}\n\n${p.text}\n\n${GLORIA}`);
+  return parts.length ? parts.join('\n\n') : undefined;
+}
 
 export function todayIso(): string {
   const d = new Date();
@@ -82,7 +92,7 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
   if (!service) return [];
   const day = dayFromIso(plan.dateIso);
   const readings = getReadings(day);
-  const collect = getCollect(day);
+  const collect = getCollect(day, service.tradition);
 
   // Distribute available readings across reading slots in order.
   const refList = readings?.principal ?? [];
@@ -113,7 +123,10 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
           ...base,
           kind: 'psalm',
           refs: psalmRefs,
-          text: s.text,
+          // Fixed canticles (Venite etc.) carry their own text; an appointed
+          // psalm slot is filled from the bundled Coverdale Psalter when whole.
+          text: s.text ?? offlinePsalmText(psalmRefs),
+          attribution: s.text ? undefined : offlinePsalmText(psalmRefs) ? 'Coverdale Psalter (BCP)' : undefined,
           fallbackUrl: officialLectionaryUrl(day),
         });
         break;
@@ -170,8 +183,49 @@ export function overlayLectionary(steps: RunStep[], refs: ScriptureRef[]): RunSt
     }
     const isPsalmody = /psalm/i.test(`${s.sectionId} ${s.title}`);
     if (s.kind === 'psalm' && isPsalmody && (!s.refs || s.refs.length === 0)) {
-      return { ...s, refs: psalms };
+      const text = s.text ?? offlinePsalmText(psalms);
+      return {
+        ...s,
+        refs: psalms,
+        text,
+        attribution: s.text ? s.attribution : text ? 'Coverdale Psalter (BCP)' : undefined,
+      };
     }
     return s;
   });
+}
+
+// ---- Duration estimate ----
+
+/** A rough seconds-per-step estimate, used for the service-length guide. */
+function estimateStepSeconds(step: RunStep): number {
+  switch (step.kind) {
+    case 'hymn': {
+      const verses = step.hymn?.order.length ?? step.hymn?.verses ?? 3;
+      return verses * 35; // ~35s per verse/refrain sung
+    }
+    case 'reading':
+      return 180; // a typical lesson
+    case 'psalm':
+      return step.text ? Math.max(60, wordCount(step.text) / 2) : 120;
+    case 'sermon':
+      return 8 * 60; // a short address
+    case 'prayers':
+      return 5 * 60;
+    case 'rubric':
+      return 0;
+    default:
+      return step.text ? Math.max(15, wordCount(step.text) / 2.5) : 20;
+  }
+}
+
+function wordCount(text: string): number {
+  return text.replace(/\[[^\]]*\]/g, '').trim().split(/\s+/).filter(Boolean).length;
+}
+
+/** Total estimated minutes for a run, and per-step seconds. */
+export function estimateDuration(steps: RunStep[]): { totalMinutes: number; perStep: number[] } {
+  const perStep = steps.map(estimateStepSeconds);
+  const totalMinutes = Math.round(perStep.reduce((a, b) => a + b, 0) / 60);
+  return { totalMinutes, perStep };
 }

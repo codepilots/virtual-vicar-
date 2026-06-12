@@ -1,27 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadSettings, saveSettings, loadPlan, savePlan } from './lib/storage';
+import { readPlanFromUrl } from './lib/share';
 import type { Settings, ServicePlan } from './lib/types';
 import { Home } from './components/Home';
 import { SettingsScreen } from './components/SettingsScreen';
 import { Wizard } from './components/Wizard';
 import { RunMode } from './components/RunMode';
+import { PrintSheet } from './components/PrintSheet';
 
 type Screen =
   | { name: 'home' }
   | { name: 'settings' }
   | { name: 'wizard' }
-  | { name: 'run' };
+  | { name: 'run' }
+  | { name: 'print' };
 
 const TITLES: Record<Screen['name'], string> = {
   home: 'Virtual Vicar',
   settings: 'Settings',
   wizard: 'Plan a Service',
   run: 'Leading the Service',
+  print: 'Order of Service',
 };
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
-  const [plan, setPlan] = useState<ServicePlan | null>(() => loadPlan());
+  // A plan shared via URL hash takes precedence over the last saved plan.
+  const [plan, setPlan] = useState<ServicePlan | null>(() => readPlanFromUrl() ?? loadPlan());
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
 
   useEffect(() => saveSettings(settings), [settings]);
@@ -54,7 +59,9 @@ export function App() {
             canRun={canRun}
             onPlan={() => setScreen({ name: 'wizard' })}
             onRun={() => setScreen({ name: 'run' })}
+            onPrint={() => setScreen({ name: 'print' })}
             onSettings={() => setScreen({ name: 'settings' })}
+            onImportPlan={(p) => setPlan(p)}
           />
         )}
         {screen.name === 'settings' && (
@@ -68,11 +75,18 @@ export function App() {
               setPlan(p);
               setScreen({ name: 'run' });
             }}
+            onPrint={(p) => {
+              setPlan(p);
+              setScreen({ name: 'print' });
+            }}
             onCancel={() => setScreen({ name: 'home' })}
           />
         )}
         {screen.name === 'run' && plan && (
           <RunMode plan={plan} settings={settings} onExit={() => setScreen({ name: 'home' })} />
+        )}
+        {screen.name === 'print' && plan && (
+          <PrintSheet plan={plan} settings={settings} onBack={() => setScreen({ name: 'home' })} />
         )}
       </main>
 

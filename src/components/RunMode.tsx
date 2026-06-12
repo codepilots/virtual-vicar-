@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Settings, ServicePlan } from '../lib/types';
-import { buildRunSteps, dayFromIso, overlayLectionary, type RunStep } from '../lib/plan';
+import {
+  buildRunSteps,
+  dayFromIso,
+  estimateDuration,
+  overlayLectionary,
+  type RunStep,
+} from '../lib/plan';
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
 import { loadMidiPlayer } from '../lib/midi';
+import { useWakeLock } from '../lib/useWakeLock';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
 
 interface Props {
@@ -13,12 +20,19 @@ interface Props {
   onExit: () => void;
 }
 
+const MIN_SCALE = 0.85;
+const MAX_SCALE = 1.8;
+
 export function RunMode({ plan, settings, onExit }: Props) {
   const baseSteps = useMemo(() => buildRunSteps(plan, settings), [plan, settings]);
   const day = useMemo(() => dayFromIso(plan.dateIso), [plan.dateIso]);
   const bible = getBibleVersion(settings.bibleVersionId);
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
+  const [scale, setScale] = useState(settings.runTextScale || 1);
+
+  // Keep the screen awake while leading.
+  useWakeLock(true);
 
   // Fill reading/psalm slots from the online lectionary where the local table
   // had nothing; offline this is a no-op and the official-lectionary links stay.
@@ -27,6 +41,13 @@ export function RunMode({ plan, settings, onExit }: Props) {
     () => overlayLectionary(baseSteps, lectionary.refs),
     [baseSteps, lectionary.refs],
   );
+
+  // Estimated minutes still to come, from the current step onward.
+  const remainingMinutes = useMemo(() => {
+    const { perStep } = estimateDuration(steps);
+    const secs = perStep.slice(index).reduce((a, b) => a + b, 0);
+    return Math.round(secs / 60);
+  }, [steps, index]);
 
   const rawStep = steps[index];
   const atEnd = index >= steps.length;
@@ -101,10 +122,29 @@ export function RunMode({ plan, settings, onExit }: Props) {
   }
 
   return (
-    <div className="run">
+    <div className="run" style={{ ['--run-scale' as string]: scale }}>
       <div className="run-step">
         <div className="run-progress">
-          Step {index + 1} of {steps.length} · {day.name}
+          <span>
+            Step {index + 1} of {steps.length} · {day.name}
+          </span>
+          <span className="run-tools">
+            ~{remainingMinutes} min left
+            <button
+              className="text-size-btn"
+              aria-label="Smaller text"
+              onClick={() => setScale((s) => Math.max(MIN_SCALE, +(s - 0.1).toFixed(2)))}
+            >
+              A−
+            </button>
+            <button
+              className="text-size-btn"
+              aria-label="Larger text"
+              onClick={() => setScale((s) => Math.min(MAX_SCALE, +(s + 0.1).toFixed(2)))}
+            >
+              A+
+            </button>
+          </span>
         </div>
         <span className={`role-badge ${step.role}`}>
           {step.role === 'all' ? 'All' : step.role === 'officiant' ? 'You (Officiant)' : step.role === 'reader' ? 'Reader' : ''}

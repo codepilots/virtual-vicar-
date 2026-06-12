@@ -6,7 +6,14 @@ import { officialLectionaryUrl } from '../data/readings';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { useDayReadings } from '../lib/api/hooks';
 import { suggestAddressResources } from '../data/addressResources';
-import { dayFromIso, defaultPlan, todayIso } from '../lib/plan';
+import {
+  buildRunSteps,
+  dayFromIso,
+  defaultPlan,
+  estimateDuration,
+  overlayLectionary,
+  todayIso,
+} from '../lib/plan';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
 
@@ -14,12 +21,13 @@ interface Props {
   settings: Settings;
   initialPlan: ServicePlan | null;
   onComplete: (plan: ServicePlan) => void;
+  onPrint: (plan: ServicePlan) => void;
   onCancel: () => void;
 }
 
 const STEP_COUNT = 6;
 
-export function Wizard({ settings, initialPlan, onComplete }: Props) {
+export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   const [step, setStep] = useState(0);
   const [plan, setPlan] = useState<ServicePlan>(
     () => initialPlan ?? defaultPlan(SERVICES[0].id, todayIso()),
@@ -37,6 +45,11 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
 
   const hymnSections = service.sections.filter(
     (s) => s.kind === 'hymn' && (plan.includedSections[s.id] ?? s.defaultOn ?? true),
+  );
+
+  const estMinutes = useMemo(
+    () => estimateDuration(overlayLectionary(buildRunSteps(plan, settings), readings.refs)).totalMinutes,
+    [plan, settings, readings.refs],
   );
 
   const setHymn = (choice: HymnChoice | undefined, sectionId: string) => {
@@ -135,13 +148,23 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
           <DayBanner day={day} />
           <div className="card">
             <h3>The Collect of the Day</h3>
-            {getCollect(day)?.collect ? (
-              <p className="spoken" style={{ fontSize: 16 }}>
-                {getCollect(day)!.collect}
-              </p>
-            ) : (
-              <p className="subtle">Not catalogued offline.</p>
-            )}
+            {(() => {
+              const c = getCollect(day, service.tradition);
+              return c?.collect ? (
+                <>
+                  <p className="spoken" style={{ fontSize: 16 }}>
+                    {c.collect}
+                  </p>
+                  {c.source && (
+                    <p className="subtle" style={{ fontSize: 12 }}>
+                      {c.source}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="subtle">Not catalogued offline.</p>
+              );
+            })()}
             <a className="link" href={officialCollectUrl(day)} target="_blank" rel="noreferrer">
               View the authorised collect →
             </a>
@@ -280,7 +303,8 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
                 ).length
               }{' '}
               sections · {plan.hymns.length} hymn(s) ·{' '}
-              {plan.address.resourceId ? 'address resource chosen' : 'own address'}
+              {plan.address.resourceId ? 'address resource chosen' : 'own address'} · about{' '}
+              <strong>{estMinutes} min</strong>
             </div>
           </div>
           <p className="subtle">
@@ -290,6 +314,11 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
           <button className="btn" onClick={() => onComplete(plan)}>
             ▶ Begin the service
           </button>
+          <div className="btn-row">
+            <button className="btn secondary" onClick={() => onPrint(plan)}>
+              ⎙ Print / PDF
+            </button>
+          </div>
         </div>
       )}
 

@@ -39,6 +39,26 @@ npm run typecheck  # strict TypeScript check
 It's a PWA: open it on a phone and "Add to Home Screen" to install. It works
 offline; deep‑links (Bible passages, MIDI files, lectionary) need a connection.
 
+## No‑backend extras
+
+These work entirely in the browser — no server, no API key:
+
+- **Offline psalms** — the public‑domain **Coverdale Psalter** (`psalter.ts`) is
+  bundled for the most‑used psalms, so a *whole‑psalm* slot shows the text and
+  reads aloud offline; verse ranges keep their Bible link (so nothing is shown
+  out of context).
+- **BCP collects** — the 1662 Collects of the Day (`collects.ts`, public domain)
+  are bundled and keyed to the calendar engine; the Prayer Book path no longer
+  needs the network for its collect.
+- **Printable order of service** — `PrintSheet` assembles the whole plan into a
+  clean document for the leader or printed pew sheets (`window.print()` → PDF).
+- **Run‑mode practicalities** — Screen Wake Lock keeps the phone awake while
+  leading; on‑the‑fly **A− / A+** text sizing (and a Settings default); and an
+  **estimated duration** shown on the review screen and counting down in run mode.
+- **Share & back up** — a plan encodes into a shareable URL (`#plan=…`) or a
+  downloadable JSON file, and reads back from either — so a leader can text the
+  plan to a colleague or keep a backup, with no accounts.
+
 ## Online sources (`src/lib/api/`)
 
 Three keyless, browser-callable APIs are integrated, all behind a single

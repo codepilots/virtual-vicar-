@@ -39,6 +39,8 @@ export interface Settings {
   /** Preferred TTS voice name, if any. */
   ttsVoice: string | null;
   ttsRate: number;
+  /** Run-mode reading text scale (1 = default), for legibility. */
+  runTextScale: number;
 }
 
 /** Everything chosen in the setup wizard for one service occasion. */
@@ -60,4 +62,5 @@ export const DEFAULT_SETTINGS: Settings = {
   ttsEnabled: true,
   ttsVoice: null,
   ttsRate: 0.95,
+  runTextScale: 1,
 };

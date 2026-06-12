@@ -154,6 +154,21 @@ export function SettingsScreen({ settings, onChange }: Props) {
             </div>
           </>
         )}
+        <div className="field" style={{ marginTop: 4 }}>
+          <label>Reading text size in run mode: {Math.round((settings.runTextScale || 1) * 100)}%</label>
+          <input
+            type="range"
+            min={0.85}
+            max={1.8}
+            step={0.05}
+            value={settings.runTextScale || 1}
+            onChange={(e) => set({ runTextScale: Number(e.target.value) })}
+            style={{ width: '100%' }}
+          />
+          <div className="subtle" style={{ fontSize: 13 }}>
+            Larger text for leading at arm’s length; adjustable on the fly during the service too.
+          </div>
+        </div>
       </div>
     </div>
   );
