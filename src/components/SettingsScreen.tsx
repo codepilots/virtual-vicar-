@@ -38,11 +38,35 @@ export function SettingsScreen({ settings, onChange }: Props) {
           >
             {BIBLE_VERSIONS.map((v) => (
               <option key={v.id} value={v.id}>
-                {v.name} ({v.code}){v.recommended ? ' ★' : ''}
+                {v.name} ({v.code}){v.recommended ? ' ★' : ''}{v.apiId ? ' · text in app' : ''}
               </option>
             ))}
           </select>
         </div>
+        <p className="subtle" style={{ fontSize: 13 }}>
+          Versions marked “text in app” are public domain, so the passage itself can be shown
+          (and read aloud) inside the app. Others open on an online Bible site.
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Online sources</h3>
+        <label className="switch">
+          <span className="sw-text">
+            <span className="t">Look things up online</span>
+            <span className="d">
+              Lectionary readings (LectServe), passage text (bible-api.com) and hymn matches
+              (Hymnary.org). Responses are cached, so prepare on wi-fi and the service still works
+              with poor signal in church. Off = offline data and links only.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={settings.useOnlineSources}
+            onChange={(e) => set({ useOnlineSources: e.target.checked })}
+          />
+        </label>
       </div>
 
       <div className="card">

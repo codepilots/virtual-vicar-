@@ -16,7 +16,7 @@ officiant's voice directly via text‑to‑speech.
 | --- | --- |
 | Choose from a list of suitable (lay-led) services | `src/data/services.ts` (Common Worship offices) + `src/data/bcp.ts` (BCP 1662 Mattins & Evensong, full text) |
 | Indicate which optional parts to include / omit | Wizard step 2 — every optional section has a toggle; fixed parts are locked on |
-| Correct readings & collect for the day | `src/data/calendar.ts` computes the liturgical day → `readings.ts` / `collects.ts` resolve them, with deep‑links to the official C of E lectionary/collects as a guaranteed fallback |
+| Correct readings & collect for the day | `src/data/calendar.ts` computes the liturgical day → live RCL readings via the LectServe API, falling back to the local table and deep‑links to the official C of E lectionary/collects |
 | Choice of Bible versions, linked to book/chapter/verse | `src/data/bibleVersions.ts` builds passage URLs (NRSVA, NIVUK, ESV, KJV, CEV, MSG…) |
 | Suggest hymns; user configures which hymn books are available | Hymn books chosen in **Settings**; `suggestHymns()` only proposes hymns you own and scores them by season & congregation |
 | Locate a MIDI for the tune; multiple settings; verses/choruses & order | `HymnPicker` — pick the tune/setting, number of verses, whether to sing the chorus, and the exact order (e.g. `v1, chorus, v2`) |
@@ -38,6 +38,28 @@ npm run typecheck  # strict TypeScript check
 
 It's a PWA: open it on a phone and "Add to Home Screen" to install. It works
 offline; deep‑links (Bible passages, MIDI files, lectionary) need a connection.
+
+## Online sources (`src/lib/api/`)
+
+Three keyless, browser-callable APIs are integrated, all behind a single
+**Settings → Online sources** toggle. Every response is cached in
+localStorage with a TTL, so a service prepared at home on wi‑fi still works
+in a poorly connected church. Every failure path (offline, CORS, timeout,
+schema drift) falls back to the local data and official link-outs.
+
+| API | Used for | Module |
+| --- | --- | --- |
+| [LectServe](https://www.lectserve.com/) | RCL readings for the chosen date — fills the wizard's readings step and the run-mode reading/psalm slots | `lectionary.ts` |
+| [bible-api.com](https://bible-api.com/) | The passage text itself, shown (and TTS-readable) in run mode for public-domain versions (KJV, WEB); copyrighted versions stay link-out only | `bibleText.ts` |
+| [Hymnary.org scripture API](https://hymnary.org/api/scripture) | Hymn suggestions that match the day's readings, alongside the local season-based suggester | `hymnary.ts` |
+
+LectServe's payload shape has varied over time, so the client hunts the JSON
+for reading-like strings and keeps only those that parse as real scripture
+references (`scriptureParse.ts`, validated against a canonical book list).
+
+**Future (need an API key → small serverless proxy):** API.Bible for
+NRSV/NIV in-app text, neural TTS (Azure/Polly/ElevenLabs) for a more natural
+voice, and the Claude API to draft a reflection from the day's readings.
 
 ## Architecture
 

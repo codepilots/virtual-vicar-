@@ -3,6 +3,8 @@ import type { Season } from '../data/calendar';
 import type { CongregationType } from '../data/congregation';
 import { suggestHymns, getHymn, getHymnBook, type Hymn } from '../data/hymns';
 import { tuneHasMidi, midiSearchUrl } from '../lib/midi';
+import { useHymnaryHits } from '../lib/api/hooks';
+import type { ScriptureRef } from '../data/readings';
 import type { HymnChoice } from '../lib/types';
 
 interface Props {
@@ -11,6 +13,10 @@ interface Props {
   season: Season;
   congregation: CongregationType | null;
   ownedBookIds: string[];
+  /** The day's readings — used for Hymnary “matches the readings” lookups. */
+  readingRefs: ScriptureRef[];
+  /** Whether online lookups are enabled. */
+  online: boolean;
   value: HymnChoice | undefined;
   onChange: (choice: HymnChoice | undefined) => void;
 }
@@ -30,6 +36,8 @@ export function HymnPicker({
   season,
   congregation,
   ownedBookIds,
+  readingRefs,
+  online,
   value,
   onChange,
 }: Props) {
@@ -39,6 +47,9 @@ export function HymnPicker({
   );
   const [expanded, setExpanded] = useState(false);
   const chosen = value ? getHymn(value.hymnId) : undefined;
+  // Online suggestions tied to the day's readings; only fetched while the
+  // picker is open so we don't hit Hymnary for every collapsed slot.
+  const hymnaryHits = useHymnaryHits(expanded && !chosen ? readingRefs : [], online);
 
   const choose = (hymn: Hymn) => {
     const tune = hymn.tunes[0];
@@ -99,6 +110,22 @@ export function HymnPicker({
               </div>
             </div>
           ))}
+          {hymnaryHits.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div className="subtle" style={{ marginBottom: 6 }}>
+                Matching today’s readings (via Hymnary.org) — check your books for these:
+              </div>
+              {hymnaryHits.map((hit) => (
+                <div key={hit.url} className="card">
+                  <strong>{hit.title}</strong>
+                  <div className="subtle">In {hit.hymnalCount} hymnals</div>
+                  <a className="link" href={hit.url} target="_blank" rel="noreferrer">
+                    View on Hymnary.org →
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

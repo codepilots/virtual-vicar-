@@ -62,6 +62,8 @@ export interface RunStep {
   role: ServiceSection['role'];
   /** Spoken/printed text where present. */
   text?: string;
+  /** Attribution line for fetched text (e.g. the Bible translation name). */
+  attribution?: string;
   note?: string;
   /** For reading/psalm steps: the scripture references to show with links. */
   refs?: ScriptureRef[];
@@ -145,4 +147,31 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
     }
   }
   return steps;
+}
+
+/**
+ * Overlay readings fetched from an online lectionary onto run steps whose
+ * slots the local table couldn't fill. Reading slots consume the non-psalm
+ * refs in order; the psalmody slot (but not fixed canticles like the Venite)
+ * receives the psalm refs.
+ */
+export function overlayLectionary(steps: RunStep[], refs: ScriptureRef[]): RunStep[] {
+  if (refs.length === 0) return steps;
+  const nonPsalm = refs.filter((r) => r.label !== 'Psalm');
+  const psalms = refs.filter((r) => r.label === 'Psalm');
+  let readingIdx = 0;
+  return steps.map((s) => {
+    if (s.kind === 'reading') {
+      const idx = readingIdx;
+      readingIdx += 1;
+      if (s.refs && s.refs.length > 0) return s; // already filled locally
+      const ref = nonPsalm[idx];
+      return ref ? { ...s, refs: [ref] } : s;
+    }
+    const isPsalmody = /psalm/i.test(`${s.sectionId} ${s.title}`);
+    if (s.kind === 'psalm' && isPsalmody && (!s.refs || s.refs.length === 0)) {
+      return { ...s, refs: psalms };
+    }
+    return s;
+  });
 }

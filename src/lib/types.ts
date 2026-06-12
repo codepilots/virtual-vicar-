@@ -29,6 +29,11 @@ export interface Settings {
   bibleVersionId: string;
   ownedHymnBookIds: string[];
   congregation: import('../data/congregation').CongregationType | null;
+  /**
+   * Fetch from online sources (LectServe lectionary, bible-api.com passage
+   * text, Hymnary suggestions). Off = fully offline, link-outs only.
+   */
+  useOnlineSources: boolean;
   /** Use TTS to read officiant parts aloud in run mode. */
   ttsEnabled: boolean;
   /** Preferred TTS voice name, if any. */
@@ -51,6 +56,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bibleVersionId: 'nrsva',
   ownedHymnBookIds: ['neh', 'am'],
   congregation: null,
+  useOnlineSources: true,
   ttsEnabled: true,
   ttsVoice: null,
   ttsRate: 0.95,

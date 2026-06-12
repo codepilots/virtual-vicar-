@@ -14,6 +14,11 @@ export interface BibleVersion {
   code: string;
   /** Whether this version is widely used in C of E lectionary contexts. */
   recommended?: boolean;
+  /**
+   * Translation id on bible-api.com when the text is public domain and can be
+   * fetched for in-app display; copyrighted versions stay link-out only.
+   */
+  apiId?: string;
   /** Builds a URL to the passage on an online Bible site. */
   url: (ref: ScriptureRef) => string;
 }
@@ -34,7 +39,8 @@ export const BIBLE_VERSIONS: BibleVersion[] = [
   { id: 'nrsva', name: 'New Revised Standard Version (Anglicized)', code: 'NRSVA', recommended: true, url: bibleGateway('NRSVA') },
   { id: 'niv-uk', name: 'New International Version (UK)', code: 'NIVUK', recommended: true, url: bibleGateway('NIVUK') },
   { id: 'esv', name: 'English Standard Version (Anglicised)', code: 'ESVUK', url: bibleGateway('ESVUK') },
-  { id: 'kjv', name: 'King James Version', code: 'KJV', url: bibleGateway('KJV') },
+  { id: 'kjv', name: 'King James Version', code: 'KJV', apiId: 'kjv', url: bibleGateway('KJV') },
+  { id: 'web', name: 'World English Bible', code: 'WEB', apiId: 'web', url: bibleGateway('WEB') },
   { id: 'cev', name: 'Contemporary English Version', code: 'CEV', url: bibleGateway('CEV') },
   { id: 'msg', name: 'The Message', code: 'MSG', url: bibleGateway('MSG') },
 ];

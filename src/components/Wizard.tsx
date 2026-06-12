@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import type { Settings, ServicePlan, HymnChoice } from '../lib/types';
 import { SERVICES, getService } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
-import { getReadings, officialLectionaryUrl } from '../data/readings';
+import { officialLectionaryUrl } from '../data/readings';
 import { getCollect, officialCollectUrl } from '../data/collects';
+import { useDayReadings } from '../lib/api/hooks';
 import { suggestAddressResources } from '../data/addressResources';
 import { dayFromIso, defaultPlan, todayIso } from '../lib/plan';
 import { DayBanner } from './DayBanner';
@@ -27,6 +28,7 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
   const day = useMemo(() => dayFromIso(plan.dateIso), [plan.dateIso]);
   const service = getService(plan.serviceId)!;
   const bible = getBibleVersion(settings.bibleVersionId);
+  const readings = useDayReadings(plan.dateIso, settings.useOnlineSources);
 
   const update = (patch: Partial<ServicePlan>) => setPlan((p) => ({ ...p, ...patch }));
 
@@ -149,19 +151,31 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
             <p className="subtle">
               Bible version: {bible?.name} ({bible?.code}). Tap a reading to open it.
             </p>
-            <ul className="refs">
-              {(getReadings(day)?.principal ?? []).map((ref, i) => (
-                <li key={i}>
-                  <a className="link" href={bible?.url(ref)} target="_blank" rel="noreferrer">
-                    {ref.label ? `${ref.label}: ` : ''}
-                    {ref.book} {ref.passage}
-                  </a>
-                </li>
-              ))}
-              {(getReadings(day)?.principal ?? []).length === 0 && (
-                <li className="subtle">Not catalogued offline for this day.</li>
-              )}
-            </ul>
+            {readings.loading ? (
+              <p className="subtle">Looking up the lectionary…</p>
+            ) : (
+              <ul className="refs">
+                {readings.refs.map((ref, i) => (
+                  <li key={i}>
+                    <a className="link" href={bible?.url(ref)} target="_blank" rel="noreferrer">
+                      {ref.label ? `${ref.label}: ` : ''}
+                      {ref.book} {ref.passage}
+                    </a>
+                  </li>
+                ))}
+                {readings.refs.length === 0 && (
+                  <li className="subtle">
+                    Couldn’t look up readings (offline?) — use the official lectionary below.
+                  </li>
+                )}
+              </ul>
+            )}
+            {readings.source === 'lectserve' && (
+              <p className="subtle" style={{ fontSize: 12 }}>
+                Readings via LectServe (Revised Common Lectionary) — verify against the official
+                lectionary for Second/Third Service variations.
+              </p>
+            )}
             <a className="link" href={officialLectionaryUrl(day)} target="_blank" rel="noreferrer">
               Open the official lectionary for this date →
             </a>
@@ -188,6 +202,8 @@ export function Wizard({ settings, initialPlan, onComplete }: Props) {
               season={day.season}
               congregation={settings.congregation}
               ownedBookIds={settings.ownedHymnBookIds}
+              readingRefs={readings.refs}
+              online={settings.useOnlineSources}
               value={plan.hymns.find((h) => h.sectionId === s.id)}
               onChange={(c) => setHymn(c, s.id)}
             />

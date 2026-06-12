@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Settings, ServicePlan } from '../lib/types';
-import { buildRunSteps, dayFromIso, type RunStep } from '../lib/plan';
+import { buildRunSteps, dayFromIso, overlayLectionary, type RunStep } from '../lib/plan';
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
 import { loadMidiPlayer } from '../lib/midi';
+import { useDayReadings, usePassageText } from '../lib/api/hooks';
 
 interface Props {
   plan: ServicePlan;
@@ -13,14 +14,37 @@ interface Props {
 }
 
 export function RunMode({ plan, settings, onExit }: Props) {
-  const steps = useMemo(() => buildRunSteps(plan, settings), [plan, settings]);
+  const baseSteps = useMemo(() => buildRunSteps(plan, settings), [plan, settings]);
   const day = useMemo(() => dayFromIso(plan.dateIso), [plan.dateIso]);
   const bible = getBibleVersion(settings.bibleVersionId);
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
 
-  const step = steps[index];
+  // Fill reading/psalm slots from the online lectionary where the local table
+  // had nothing; offline this is a no-op and the official-lectionary links stay.
+  const lectionary = useDayReadings(plan.dateIso, settings.useOnlineSources);
+  const steps = useMemo(
+    () => overlayLectionary(baseSteps, lectionary.refs),
+    [baseSteps, lectionary.refs],
+  );
+
+  const rawStep = steps[index];
   const atEnd = index >= steps.length;
+
+  // For the current reading/psalm step, fetch the passage text in the user's
+  // version when it has a public-domain source — shown inline and readable
+  // aloud by TTS. Other versions keep their deep link only.
+  const passage = usePassageText(
+    rawStep && (rawStep.kind === 'reading' || rawStep.kind === 'psalm')
+      ? rawStep.refs?.[0]
+      : undefined,
+    settings.bibleVersionId,
+    settings.useOnlineSources,
+  );
+  const step: RunStep | undefined =
+    rawStep && passage && !rawStep.text
+      ? { ...rawStep, text: passage.text, attribution: passage.translationName }
+      : rawStep;
 
   // Auto-read officiant text when enabled and the step changes.
   useEffect(() => {
@@ -126,6 +150,11 @@ function StepBody({
       return (
         <div>
           {step.text && <p className="spoken">{step.text}</p>}
+          {step.attribution && (
+            <p className="subtle" style={{ fontSize: 12 }}>
+              {step.attribution} · via bible-api.com
+            </p>
+          )}
           <ul className="refs">
             {(step.refs ?? []).map((ref, i) => (
               <li key={i}>
