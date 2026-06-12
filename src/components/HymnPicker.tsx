@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Season } from '../data/calendar';
 import type { CongregationType } from '../data/congregation';
 import { suggestHymns, getHymn, getHymnBook, type Hymn } from '../data/hymns';
-import { tuneHasMidi, midiSearchUrl } from '../lib/midi';
+import { tuneHasPlayableMidi, hasCuratedListenPage, listenUrl } from '../lib/midi';
 import { useHymnaryHits } from '../lib/api/hooks';
 import type { ScriptureRef } from '../data/readings';
 import type { HymnChoice } from '../lib/types';
@@ -211,38 +211,33 @@ export function HymnPicker({
 
           {(() => {
             const tune = chosen.tunes.find((t) => t.id === value.tuneId);
-            const hasMidi = tuneHasMidi(tune);
+            const playable = tuneHasPlayableMidi(tune);
+            const curated = hasCuratedListenPage(tune);
             return (
               <>
-                <label className="switch">
-                  <span className="sw-text">
-                    <span className="t">Play the tune (MIDI) on the day</span>
-                    <span className="d">
-                      {hasMidi ? 'A MIDI file is available for this tune.' : 'No MIDI catalogued — search link provided.'}
+                {playable && (
+                  <label className="switch">
+                    <span className="sw-text">
+                      <span className="t">Play the tune on the day</span>
+                      <span className="d">Embed the MIDI player in run mode.</span>
                     </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="toggle"
-                    checked={value.playMidi}
-                    onChange={(e) => update({ playMidi: e.target.checked })}
-                  />
-                </label>
+                    <input
+                      type="checkbox"
+                      className="toggle"
+                      checked={value.playMidi}
+                      onChange={(e) => update({ playMidi: e.target.checked })}
+                    />
+                  </label>
+                )}
                 <div className="subtle" style={{ marginTop: 6 }}>
-                  {hasMidi ? (
-                    <a className="link" href={tune!.midiUrl} target="_blank" rel="noreferrer">
-                      Open the MIDI for “{tune!.name}”
-                    </a>
-                  ) : (
-                    <a
-                      className="link"
-                      href={midiSearchUrl(tune?.name ?? chosen.title)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Find a MIDI for “{tune?.name ?? chosen.title}”
-                    </a>
-                  )}
+                  <a
+                    className="link"
+                    href={listenUrl(tune, chosen.title)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ♪ Hear “{tune?.name ?? chosen.title}”{curated ? '' : ' (search)'} ↗
+                  </a>
                 </div>
               </>
             );

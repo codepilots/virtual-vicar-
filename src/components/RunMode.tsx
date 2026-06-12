@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Settings, ServicePlan } from '../lib/types';
 import {
   buildRunSteps,
@@ -10,7 +10,7 @@ import {
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
-import { loadMidiPlayer } from '../lib/midi';
+import { loadMidiPlayer, tuneHasPlayableMidi, listenUrl } from '../lib/midi';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
@@ -331,14 +331,16 @@ function HymnStep({ step }: { step: RunStep }) {
   const choice = step.hymn;
   const hymn = choice ? getHymn(choice.hymnId) : undefined;
   const tune = hymn?.tunes.find((t) => t.id === choice?.tuneId);
-  const playerRef = useRef<HTMLDivElement>(null);
+  const playable = tuneHasPlayableMidi(tune) && Boolean(choice?.playMidi);
   const [playerReady, setPlayerReady] = useState(false);
 
   useEffect(() => {
-    if (choice?.playMidi && tune?.midiUrl) {
+    // Only load the player bundle for a genuine same-origin MIDI file, so the
+    // heavy CDN dependencies are never fetched otherwise.
+    if (playable) {
       loadMidiPlayer().then(() => setPlayerReady(true)).catch(() => setPlayerReady(false));
     }
-  }, [choice?.playMidi, tune?.midiUrl]);
+  }, [playable]);
 
   if (!choice || !hymn) {
     return <p className="subtle">No hymn chosen for this slot — sing one of your choice or skip.</p>;
@@ -356,19 +358,15 @@ function HymnStep({ step }: { step: RunStep }) {
       <div className="muted-box" style={{ marginTop: 10 }}>
         Order: {choice.order.join(' → ')}
       </div>
-      {choice.playMidi && tune?.midiUrl ? (
-        <div ref={playerRef} style={{ marginTop: 10 }}>
-          {playerReady ? (
-            <midi-player src={tune.midiUrl} sound-font="" />
-          ) : (
-            <a className="link" href={tune.midiUrl} target="_blank" rel="noreferrer">
-              Open the MIDI for “{tune.name}” →
-            </a>
-          )}
+      {playable && tune?.midiFile && playerReady ? (
+        <div style={{ marginTop: 10 }}>
+          <midi-player src={tune.midiFile} sound-font="" />
         </div>
       ) : (
-        <p className="subtle" style={{ marginTop: 8 }}>
-          MIDI playback off for this hymn.
+        <p style={{ marginTop: 10 }}>
+          <a className="link" href={listenUrl(tune, hymn.title)} target="_blank" rel="noreferrer">
+            ♪ Hear the tune{tune?.name ? ` (${tune.name})` : ''} ↗
+          </a>
         </p>
       )}
     </div>

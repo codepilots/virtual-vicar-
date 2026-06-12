@@ -1,13 +1,20 @@
-// MIDI helpers. Browsers cannot play MIDI natively, so we offer two things:
-//  1. a link to open/download the tune's MIDI file, and
-//  2. an optional embedded player via the `html-midi-player` web component,
-//     loaded lazily from a CDN only when the user chooses to play.
+// Tune playback / listening helpers.
 //
-// If the device is offline or the CDN is blocked, the link-out still works.
+// Reliable cross-origin MIDI playback isn't achievable on a static host: the
+// free tune pages (Hymnary etc.) are HTML, not `.mid` files, and direct MIDI
+// files are CORS-restricted. So the default experience is a "hear the tune"
+// link that opens the tune's page or a sung performance — navigation isn't
+// subject to CORS, so this works everywhere and offline-degrades to a link.
+//
+// True embedded playback is supported only for a genuine same-origin MIDI file
+// (a tune's `midiFile`, e.g. one bundled under public/tunes/). When present, a
+// lightweight player is loaded on demand; when absent, the heavy player bundle
+// is never fetched — which is why no tracking/CDN noise appears by default.
 
 import type { Tune } from '../data/hymns';
 
-const PLAYER_CDN = 'https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0';
+const PLAYER_CDN =
+  'https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0';
 
 let loaderPromise: Promise<void> | null = null;
 
@@ -27,11 +34,23 @@ export function loadMidiPlayer(): Promise<void> {
   return loaderPromise;
 }
 
-export function tuneHasMidi(tune: Tune | undefined): boolean {
-  return Boolean(tune?.midiUrl);
+/** True when a tune has a real, same-origin MIDI file we can embed and play. */
+export function tuneHasPlayableMidi(tune: Tune | undefined): boolean {
+  return Boolean(tune?.midiFile);
 }
 
-/** A user-facing search link to find a MIDI when one isn't catalogued. */
-export function midiSearchUrl(tuneName: string): string {
-  return `https://hymnary.org/search?qu=${encodeURIComponent(tuneName)}%20media%3Amidi`;
+/**
+ * The best link to hear a tune: its dedicated info/listen page when known,
+ * otherwise a YouTube search for the tune name (most hymn tunes have sung
+ * recordings there). Always returns a usable URL.
+ */
+export function listenUrl(tune: Tune | undefined, hymnTitle: string): string {
+  if (tune?.listenUrl) return tune.listenUrl;
+  const query = tune?.name ? `${tune.name} hymn tune` : `${hymnTitle} hymn`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+}
+
+/** Whether the listen link points at a curated tune page (vs a search). */
+export function hasCuratedListenPage(tune: Tune | undefined): boolean {
+  return Boolean(tune?.listenUrl);
 }
