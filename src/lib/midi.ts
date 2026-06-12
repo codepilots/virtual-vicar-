@@ -7,9 +7,9 @@
 // subject to CORS, so this works everywhere and offline-degrades to a link.
 //
 // True embedded playback is supported only for a genuine same-origin MIDI file
-// (a tune's `midiFile`, e.g. one bundled under public/tunes/). When present, a
-// lightweight player is loaded on demand; when absent, the heavy player bundle
-// is never fetched — which is why no tracking/CDN noise appears by default.
+// (a tune's `midiFile`, bundled under public/midi/ — public domain, credited
+// in public/midi/CREDITS.md). When present, a lightweight player is loaded on
+// demand; when absent, the heavy player bundle is never fetched.
 
 import type { Tune } from '../data/hymns';
 
@@ -34,18 +34,29 @@ export function loadMidiPlayer(): Promise<void> {
   return loaderPromise;
 }
 
-export function tuneHasMidi(tune: Tune | undefined): boolean {
-  return Boolean(tune?.midiFile || tune?.midiUrl);
+/** True when a tune has a real, same-origin MIDI file we can embed and play. */
+export function tuneHasPlayableMidi(tune: Tune | undefined): boolean {
+  return Boolean(tune?.midiFile);
 }
 
 /**
- * The playable/openable MIDI URL for a tune. Bundled public-domain files
- * (public/midi/, credited in public/midi/CREDITS.md) win over external links
- * because they work offline and can be embedded in the player directly.
+ * The URL of a tune's bundled same-origin MIDI file (playable offline and in
+ * the embedded player), or undefined when none is bundled.
  */
 export function tuneMidiUrl(tune: Tune | undefined): string | undefined {
   if (tune?.midiFile) return `${import.meta.env.BASE_URL}midi/${tune.midiFile}`;
-  return tune?.midiUrl;
+  return undefined;
+}
+
+/**
+ * The best link to hear a tune: its dedicated info/listen page when known,
+ * otherwise a YouTube search for the tune name (most hymn tunes have sung
+ * recordings there). Always returns a usable URL.
+ */
+export function listenUrl(tune: Tune | undefined, hymnTitle: string): string {
+  if (tune?.listenUrl) return tune.listenUrl;
+  const query = tune?.name ? `${tune.name} hymn tune` : `${hymnTitle} hymn`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
 /** Whether the listen link points at a curated tune page (vs a search). */

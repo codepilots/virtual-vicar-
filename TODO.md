@@ -55,9 +55,10 @@ ideas parked for later. (See `README.md` for what's already built.)
   display once the texts carry per-verse structure).
 - **Hymn catalogue at scale** — import a proper index (e.g. from Hymnary data
   exports) instead of the hand-curated ~50; per-book number verification.
-- **Bundle tune MIDIs for in-app playback** — drop public-domain `.mid` files
-  under `public/tunes/` and set `Tune.midiFile`; same-origin means no CORS and
-  the embedded player works. (The link-out covers listening meanwhile.)
+- ~~**Bundle tune MIDIs for in-app playback**~~ — done: 33 public-domain
+  tunes from the Open Hymnal Project ship under `public/midi/` with
+  `Tune.midiFile` set (credits in `public/midi/CREDITS.md`); the embedded
+  player runs for these, and other tunes keep the listen link-out.
 - **Second/Third Service lectionary** — LectServe gives the Principal
   Service; Evensong properly wants the Second Service readings.
 

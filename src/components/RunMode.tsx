@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Settings, ServicePlan } from '../lib/types';
 import {
   buildRunSteps,
@@ -10,8 +10,7 @@ import {
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
-import { loadMidiPlayer, tuneHasPlayableMidi, listenUrl } from '../lib/midi';
-import { loadMidiPlayer, tuneMidiUrl } from '../lib/midi';
+import { loadMidiPlayer, tuneMidiUrl, listenUrl } from '../lib/midi';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
