@@ -20,6 +20,12 @@ export interface Tune {
   name: string;
   /** Metre, e.g. "87.87.87". */
   metre?: string;
+  /** A page where the tune can be heard/viewed (opened as a link, not fetched). */
+  listenUrl?: string;
+  /**
+   * A genuine, same-origin MIDI file (e.g. bundled under public/tunes/) that
+   * can be embedded and played. Cross-origin MIDI is not used — it is
+   * CORS-blocked on a static host. None bundled yet; the UI links out instead.
   /** A URL to a MIDI rendering of the tune, where known. */
   midiUrl?: string;
   /**

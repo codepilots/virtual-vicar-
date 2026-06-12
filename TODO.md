@@ -17,8 +17,11 @@ ideas parked for later. (See `README.md` for what's already built.)
    - [ ] Each RSS feed loads ("Show latest posts" on the address step); fix
          any wrong feed URL in `src/data/addressResources.ts` and flip
          `feedVerified: true`
-   - [ ] MIDI player loads from the CDN and plays (33 tunes now play from
-         bundled public-domain files in `public/midi/`; the rest link out)
+   - [x] ~~MIDI player loads from the CDN and plays~~ — reworked: tune pages
+         aren't MIDI files and cross-origin MIDI is CORS-blocked, so the app
+         now links out to "Hear the tune" (Hymnary page or YouTube search).
+         Embedded playback only runs for a genuine same-origin `.mid`
+         (`Tune.midiFile`) — see "bundle tune MIDIs" below.
    - [ ] TTS voices, wake lock, and Add-to-Home-Screen on a real phone
 2. **Proofread the transcribed texts against printed copies** (all marked ⚠
    in the app). Flip the flags as you verify:
@@ -49,6 +52,9 @@ ideas parked for later. (See `README.md` for what's already built.)
   display once the texts carry per-verse structure).
 - **Hymn catalogue at scale** — import a proper index (e.g. from Hymnary data
   exports) instead of the hand-curated ~50; per-book number verification.
+- **Bundle tune MIDIs for in-app playback** — drop public-domain `.mid` files
+  under `public/tunes/` and set `Tune.midiFile`; same-origin means no CORS and
+  the embedded player works. (The link-out covers listening meanwhile.)
 - **Second/Third Service lectionary** — LectServe gives the Principal
   Service; Evensong properly wants the Second Service readings.
 

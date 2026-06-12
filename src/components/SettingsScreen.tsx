@@ -219,8 +219,9 @@ export function SettingsScreen({ settings, onChange }: Props) {
           <li>
             <strong>Blogs &amp; podcasts</strong> — content belongs to its publishers (Psephizo,
             Thinking Anglicans, ViaMedia.News, Covenant, Working Preacher, St Mellitus, Premier,
-            Church Times…). Feeds are read directly or via the AllOrigins public passthrough;
-            feed addresses follow each publisher’s convention but are{' '}
+            Church Times…). Feeds are read directly or via public CORS passthroughs
+            (corsproxy.io, AllOrigins, codetabs); feed addresses follow each publisher’s
+            convention but are{' '}
             <span className="unverified">not yet individually verified</span> — a broken feed
             falls back to the site link.
           </li>
