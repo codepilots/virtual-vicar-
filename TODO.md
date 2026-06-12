@@ -17,7 +17,8 @@ ideas parked for later. (See `README.md` for what's already built.)
    - [ ] Each RSS feed loads ("Show latest posts" on the address step); fix
          any wrong feed URL in `src/data/addressResources.ts` and flip
          `feedVerified: true`
-   - [ ] MIDI player loads from the CDN and plays
+   - [ ] MIDI player loads from the CDN and plays (33 tunes now play from
+         bundled public-domain files in `public/midi/`; the rest link out)
    - [ ] TTS voices, wake lock, and Add-to-Home-Screen on a real phone
 2. **Proofread the transcribed texts against printed copies** (all marked ⚠
    in the app). Flip the flags as you verify:

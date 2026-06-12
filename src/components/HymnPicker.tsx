@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Season } from '../data/calendar';
 import type { CongregationType } from '../data/congregation';
 import { suggestHymns, getHymn, getHymnBook, type Hymn } from '../data/hymns';
-import { tuneHasMidi, midiSearchUrl } from '../lib/midi';
+import { tuneHasMidi, tuneMidiUrl, midiSearchUrl } from '../lib/midi';
 import { useHymnaryHits } from '../lib/api/hooks';
 import type { ScriptureRef } from '../data/readings';
 import type { HymnChoice } from '../lib/types';
@@ -218,7 +218,11 @@ export function HymnPicker({
                   <span className="sw-text">
                     <span className="t">Play the tune (MIDI) on the day</span>
                     <span className="d">
-                      {hasMidi ? 'A MIDI file is available for this tune.' : 'No MIDI catalogued — search link provided.'}
+                      {tune?.midiFile
+                        ? 'A public-domain MIDI is bundled with the app (works offline).'
+                        : hasMidi
+                          ? 'A MIDI file is available for this tune.'
+                          : 'No MIDI catalogued — search link provided.'}
                     </span>
                   </span>
                   <input
@@ -230,7 +234,7 @@ export function HymnPicker({
                 </label>
                 <div className="subtle" style={{ marginTop: 6 }}>
                   {hasMidi ? (
-                    <a className="link" href={tune!.midiUrl} target="_blank" rel="noreferrer">
+                    <a className="link" href={tuneMidiUrl(tune)} target="_blank" rel="noreferrer">
                       Open the MIDI for “{tune!.name}”
                     </a>
                   ) : (

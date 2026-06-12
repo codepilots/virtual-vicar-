@@ -10,7 +10,7 @@ import {
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
-import { loadMidiPlayer } from '../lib/midi';
+import { loadMidiPlayer, tuneMidiUrl } from '../lib/midi';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
@@ -331,14 +331,15 @@ function HymnStep({ step }: { step: RunStep }) {
   const choice = step.hymn;
   const hymn = choice ? getHymn(choice.hymnId) : undefined;
   const tune = hymn?.tunes.find((t) => t.id === choice?.tuneId);
+  const midiUrl = tuneMidiUrl(tune);
   const playerRef = useRef<HTMLDivElement>(null);
   const [playerReady, setPlayerReady] = useState(false);
 
   useEffect(() => {
-    if (choice?.playMidi && tune?.midiUrl) {
+    if (choice?.playMidi && midiUrl) {
       loadMidiPlayer().then(() => setPlayerReady(true)).catch(() => setPlayerReady(false));
     }
-  }, [choice?.playMidi, tune?.midiUrl]);
+  }, [choice?.playMidi, midiUrl]);
 
   if (!choice || !hymn) {
     return <p className="subtle">No hymn chosen for this slot — sing one of your choice or skip.</p>;
@@ -356,13 +357,13 @@ function HymnStep({ step }: { step: RunStep }) {
       <div className="muted-box" style={{ marginTop: 10 }}>
         Order: {choice.order.join(' → ')}
       </div>
-      {choice.playMidi && tune?.midiUrl ? (
+      {choice.playMidi && midiUrl ? (
         <div ref={playerRef} style={{ marginTop: 10 }}>
           {playerReady ? (
-            <midi-player src={tune.midiUrl} sound-font="" />
+            <midi-player src={midiUrl} sound-font="" />
           ) : (
-            <a className="link" href={tune.midiUrl} target="_blank" rel="noreferrer">
-              Open the MIDI for “{tune.name}” →
+            <a className="link" href={midiUrl} target="_blank" rel="noreferrer">
+              Open the MIDI for “{tune?.name}” →
             </a>
           )}
         </div>

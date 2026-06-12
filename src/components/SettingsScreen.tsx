@@ -199,7 +199,18 @@ export function SettingsScreen({ settings, onChange }: Props) {
             ; other versions link to BibleGateway.
           </li>
           <li>
-            <strong>Hymn data &amp; MIDI</strong> —{' '}
+            <strong>Bundled hymn-tune MIDIs</strong> — public domain, from{' '}
+            <a className="link" href="https://openhymnal.org/" target="_blank" rel="noreferrer">
+              The Open Hymnal Project
+            </a>{' '}
+            (ed. Brian J. Dumont), which verifies the copyright status of the music, setting,
+            words and translation of every hymn it publishes. Per-tune composer and setting
+            credits ship with the app in <code>midi/CREDITS.md</code>. Tunes whose usual
+            settings are still in UK copyright (e.g. Vaughan Williams, Howells, Ireland) are
+            deliberately not bundled.
+          </li>
+          <li>
+            <strong>Hymn data &amp; other MIDI links</strong> —{' '}
             <a className="link" href="https://hymnary.org/" target="_blank" rel="noreferrer">
               Hymnary.org
             </a>

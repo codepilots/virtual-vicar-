@@ -28,7 +28,17 @@ export function loadMidiPlayer(): Promise<void> {
 }
 
 export function tuneHasMidi(tune: Tune | undefined): boolean {
-  return Boolean(tune?.midiUrl);
+  return Boolean(tune?.midiFile || tune?.midiUrl);
+}
+
+/**
+ * The playable/openable MIDI URL for a tune. Bundled public-domain files
+ * (public/midi/, credited in public/midi/CREDITS.md) win over external links
+ * because they work offline and can be embedded in the player directly.
+ */
+export function tuneMidiUrl(tune: Tune | undefined): string | undefined {
+  if (tune?.midiFile) return `${import.meta.env.BASE_URL}midi/${tune.midiFile}`;
+  return tune?.midiUrl;
 }
 
 /** A user-facing search link to find a MIDI when one isn't catalogued. */

@@ -13,6 +13,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
+      // Precache the bundled public-domain hymn MIDIs so "Play the tune"
+      // works offline (the files total ~350 kB).
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,mid}'] },
       manifest: {
         name: 'Virtual Vicar',
         short_name: 'Vicar',
