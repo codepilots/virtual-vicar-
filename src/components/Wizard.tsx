@@ -5,7 +5,7 @@ import { getBibleVersion } from '../data/bibleVersions';
 import { officialLectionaryUrl } from '../data/readings';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { useDayReadings } from '../lib/api/hooks';
-import { suggestAddressResources } from '../data/addressResources';
+import { suggestAddressResources, resolveAddressResources } from '../data/addressResources';
 import {
   buildRunSteps,
   dayFromIso,
@@ -247,7 +247,10 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             </>
           )}
           <div className="card">
-            {service.sections.map((s) => {
+            {service.sections
+              // The Reflection slot is hidden unless enabled in Settings.
+              .filter((s) => s.kind !== 'sermon' || settings.allowReflection)
+              .map((s) => {
               const on = s.optional ? (plan.includedSections[s.id] ?? false) : true;
               return (
                 <div key={s.id}>
@@ -428,7 +431,17 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
       {/* Step 5 — address */}
       {step === 4 && (
         <div>
-          <h2>The Address</h2>
+          <h2>The Reflection</h2>
+          {!settings.allowReflection ? (
+            <div className="card">
+              <p className="subtle" style={{ margin: 0 }}>
+                The Reflection is turned off. In the Church of England a lay person may give a short
+                reflection or address only with the incumbent’s permission — turn it on under{' '}
+                <strong>Settings → The Reflection</strong> if you have that permission.
+              </p>
+            </div>
+          ) : (
+          <>
           <p className="subtle">
             Pick a resource to draw on, or note your own outline. Filtered for a{' '}
             {settings.congregation ?? 'general'} congregation.
@@ -460,7 +473,11 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
               Chosen for the address: <strong>“{plan.address.itemTitle}”</strong>
             </p>
           )}
-          {suggestAddressResources(day.season, settings.congregation).map((r) => (
+          {suggestAddressResources(
+            day.season,
+            settings.congregation,
+            resolveAddressResources(settings.hiddenSourceIds, settings.customSources),
+          ).map((r) => (
             <div
               key={r.id}
               className="card pressable"
@@ -498,6 +515,10 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                       resourceId: r.id,
                       itemTitle: item.title,
                       itemUrl: item.link,
+                      itemAudioUrl: item.audioUrl,
+                      // Drop the post's text straight into the notes for editing
+                      // (when the feed gives us a body).
+                      notes: item.content ?? plan.address.notes,
                     },
                   })
                 }
@@ -514,6 +535,8 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
               />
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
 
@@ -527,15 +550,22 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             <div className="subtle">
               {
                 service.sections.filter(
-                  (s) => !s.optional || (plan.includedSections[s.id] ?? false),
+                  (s) =>
+                    (s.kind !== 'sermon' || settings.allowReflection) &&
+                    (!s.optional || (plan.includedSections[s.id] ?? false)),
                 ).length
               }{' '}
-              sections · {plan.hymns.length} hymn(s) ·{' '}
-              {plan.address.itemTitle
-                ? `address: “${plan.address.itemTitle}”`
-                : plan.address.resourceId
-                  ? 'address resource chosen'
-                  : 'own address'}{' '}
+              sections · {plan.hymns.length} hymn(s)
+              {settings.allowReflection && (
+                <>
+                  {' '}·{' '}
+                  {plan.address.itemTitle
+                    ? `reflection: “${plan.address.itemTitle}”`
+                    : plan.address.resourceId
+                      ? 'reflection resource chosen'
+                      : 'own reflection'}
+                </>
+              )}{' '}
               · about{' '}
               <strong>{estMinutes} min</strong>
             </div>

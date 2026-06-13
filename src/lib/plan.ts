@@ -2,7 +2,7 @@
 // steps shown in run mode.
 
 import { getLiturgicalDay, type LiturgicalDay } from '../data/calendar';
-import { getAddressResource } from '../data/addressResources';
+import { getAddressResource, resolveAddressResources } from '../data/addressResources';
 import { getService, type ServiceSection } from '../data/services';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
@@ -101,6 +101,8 @@ export interface RunStep {
     resourceAuthor?: string;
     itemTitle?: string;
     itemUrl?: string;
+    /** A recording (podcast episode) to play in one tap, if chosen. */
+    itemAudioUrl?: string;
     notes?: string;
   };
 }
@@ -109,7 +111,7 @@ export interface RunStep {
  * Resolve the ordered run steps for a plan, filling reading/collect slots from
  * the lectionary and dropping any optional section the user excluded.
  */
-export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[] {
+export function buildRunSteps(plan: ServicePlan, settings: Settings): RunStep[] {
   const service = getService(plan.serviceId);
   if (!service) return [];
   const day = dayFromIso(plan.dateIso);
@@ -131,6 +133,8 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
 
   for (const s of service.sections) {
     if (!isSectionIncluded(plan, s)) continue;
+    // The Reflection is hidden unless explicitly enabled in Settings.
+    if (s.kind === 'sermon' && !settings.allowReflection) continue;
     const base = {
       sectionId: s.id,
       title: s.title,
@@ -186,10 +190,13 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
         break;
       case 'sermon': {
         const resource = plan.address.resourceId
-          ? getAddressResource(plan.address.resourceId)
+          ? getAddressResource(
+              plan.address.resourceId,
+              resolveAddressResources(settings.hiddenSourceIds, settings.customSources),
+            )
           : undefined;
         const hasAddressInfo =
-          resource || plan.address.itemTitle || plan.address.notes;
+          resource || plan.address.itemTitle || plan.address.notes || plan.address.itemAudioUrl;
         steps.push({
           ...base,
           kind: 'sermon',
@@ -200,6 +207,7 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
                 resourceAuthor: resource?.author,
                 itemTitle: plan.address.itemTitle,
                 itemUrl: plan.address.itemUrl,
+                itemAudioUrl: plan.address.itemAudioUrl,
                 notes: plan.address.notes,
               }
             : undefined,

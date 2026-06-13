@@ -58,9 +58,12 @@ ideas parked for later. (See `README.md` for what's already built.)
    - [x] ~~Cross-references in the paste ("(page 108)", "pages 362–371", and
          "(link is external)" web links) are stripped from the rendered text and
          surfaced per-section in the wizard as Common Worship lookups, keyed off
-         the page number (the reliable anchor). Limit: the clipboard text has no
-         original URLs (HTML-only), so the links are a CW search, not a deep
-         link — would need clipboard-HTML capture for exact targets.~~
+         the page number (the reliable anchor). A curated index in
+         `cwReferences.ts` (`CW_INDEX`) deep-links the known resources straight
+         to daily.commonworship.com (Acclamation, Blessing of Light, canticles
+         by page, prayer cycles, intercession forms); anything not yet indexed
+         falls back to a Common Worship search. Extend `CW_INDEX` as more page
+         numbers turn up.~~
 4. **Pick a deployment domain** if GitHub Pages isn't wanted (Netlify/Vercel
    also work; unset `VV_BASE` for a root domain).
 
@@ -76,6 +79,18 @@ ideas parked for later. (See `README.md` for what's already built.)
   biddings/outline and which prepared forms to have ready; run mode and the
   print sheet show only those. Still to do: seasonal litany forms; local names
   list (sick/departed) saved per parish.
+- ~~**The Reflection (address)**~~ — done: gated behind a Settings toggle (with
+  a Canon B 18 reminder); renamed from “Sermon / Address”; sources are now
+  configurable in Settings (hide built-ins, add/remove your own); selecting a
+  feed item drops its body into the notes; a chosen podcast episode plays in
+  one tap in run mode (`<audio>`, media channel — works on iOS regardless of the
+  silent switch) with a best-effort “Save for offline” (Cache API +
+  `vv-recordings` workbox runtime cache; reliable only for CORS-friendly hosts).
+- ~~**iOS hymn MIDI silent / no audio**~~ — mitigated: `armAudioUnlock()` resumes
+  Web Audio on first tap and a UI note flags the silent switch (Web Audio is
+  muted by it on iOS). Not fully verifiable without a device; the @magenta
+  player owns its own audio context, so if it persists, the fallback is to
+  prefer the recording/“hear the tune” link on iOS.
 - **Expand the Coverdale Psalter** to all 150 (and support verse-range
   display once the texts carry per-verse structure).
 - **Hymn catalogue at scale** — import a proper index (e.g. from Hymnary data

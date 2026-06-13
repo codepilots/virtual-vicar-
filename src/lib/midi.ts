@@ -34,6 +34,44 @@ export function loadMidiPlayer(): Promise<void> {
   return loaderPromise;
 }
 
+// iOS Safari starts Web Audio suspended and only lets it run after a user
+// gesture; it also routes Web Audio through the ring/silent switch. The MIDI
+// player (Tone.js / @magenta) creates its context lazily, so on the first tap
+// we resume a context (and Tone, if exposed) and play a silent buffer to
+// unlock playback. Harmless elsewhere. (The silent switch caveat is shown in
+// the UI — recordings use the media channel and aren't affected.)
+let audioUnlockArmed = false;
+export function armAudioUnlock(): void {
+  if (audioUnlockArmed || typeof window === 'undefined') return;
+  audioUnlockArmed = true;
+  const w = window as unknown as {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+    Tone?: { start?: () => void; context?: { resume?: () => void } };
+  };
+  const unlock = () => {
+    try {
+      const Ctx = w.AudioContext ?? w.webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        void ctx.resume?.();
+        const src = ctx.createBufferSource();
+        src.buffer = ctx.createBuffer(1, 1, 22050);
+        src.connect(ctx.destination);
+        src.start(0);
+      }
+      w.Tone?.start?.();
+      w.Tone?.context?.resume?.();
+    } catch {
+      /* best effort */
+    }
+    document.removeEventListener('pointerdown', unlock);
+    document.removeEventListener('touchend', unlock);
+  };
+  document.addEventListener('pointerdown', unlock, { once: true });
+  document.addEventListener('touchend', unlock, { once: true });
+}
+
 /** True when a tune has a real, same-origin MIDI file we can embed and play. */
 export function tuneHasPlayableMidi(tune: Tune | undefined): boolean {
   return Boolean(tune?.midiFile);

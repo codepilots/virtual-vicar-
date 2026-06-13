@@ -11,6 +11,7 @@
 
 import type { Season } from './calendar';
 import type { CongregationType } from './congregation';
+import type { CustomAddressSource } from '../lib/types';
 
 export interface AddressResource {
   id: string;
@@ -156,13 +157,43 @@ export const ADDRESS_RESOURCES: AddressResource[] = [
   },
 ];
 
-export function getAddressResource(id: string): AddressResource | undefined {
-  return ADDRESS_RESOURCES.find((r) => r.id === id);
+/** Turn a user-added source into a full resource (no season/congregation tags). */
+function fromCustom(c: CustomAddressSource): AddressResource {
+  return {
+    id: c.id,
+    title: c.title,
+    author: c.author,
+    kind: c.kind,
+    url: c.url,
+    rssUrl: c.rssUrl || undefined,
+    feedVerified: false,
+    description: 'Added by you.',
+    seasons: [],
+    congregations: [],
+  };
+}
+
+/** The effective reflection sources: the built-ins the user hasn't hidden,
+ *  plus any they've added. */
+export function resolveAddressResources(
+  hiddenIds: string[] = [],
+  custom: CustomAddressSource[] = [],
+): AddressResource[] {
+  const hidden = new Set(hiddenIds);
+  return [...ADDRESS_RESOURCES.filter((r) => !hidden.has(r.id)), ...custom.map(fromCustom)];
+}
+
+export function getAddressResource(
+  id: string,
+  sources: AddressResource[] = ADDRESS_RESOURCES,
+): AddressResource | undefined {
+  return sources.find((r) => r.id === id);
 }
 
 export function suggestAddressResources(
   season: Season,
   congregation: CongregationType | null,
+  sources: AddressResource[] = ADDRESS_RESOURCES,
 ): AddressResource[] {
   const score = (r: AddressResource): number => {
     let s = 0;
@@ -173,5 +204,5 @@ export function suggestAddressResources(
     if (r.rssUrl) s += 0.5; // feeds we can pull in are slightly preferred
     return s;
   };
-  return [...ADDRESS_RESOURCES].sort((a, b) => score(b) - score(a));
+  return [...sources].sort((a, b) => score(b) - score(a));
 }

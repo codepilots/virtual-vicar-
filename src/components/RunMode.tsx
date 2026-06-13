@@ -10,7 +10,7 @@ import {
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
-import { loadMidiPlayer, tuneMidiUrl, listenUrl } from '../lib/midi';
+import { loadMidiPlayer, tuneMidiUrl, listenUrl, armAudioUnlock } from '../lib/midi';
 import { Liturgy, liturgySpeech } from './Liturgy';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
@@ -270,9 +270,10 @@ function StepBody({
             </div>
           ) : (
             <div className="muted-box">
-              The address. Deliver your talk or play your chosen resource.
+              The reflection. Give your reflection or play your chosen resource.
             </div>
           )}
+          {step.address?.itemAudioUrl && <RecordingPlayer url={step.address.itemAudioUrl} />}
           {step.address?.notes && (
             <p className="spoken" style={{ marginTop: 10, whiteSpace: 'pre-wrap' }}>
               {step.address.notes}
@@ -292,6 +293,48 @@ function StepBody({
         <p className="subtle">—</p>
       );
   }
+}
+
+/**
+ * One-tap playback of a chosen recording (a podcast episode). Media elements
+ * stream a cross-origin file without CORS, so playback "just works" online (and
+ * on iOS it uses the media channel, unaffected by the silent switch — unlike
+ * the Web-Audio hymn MIDIs). "Save for offline" is best-effort: it caches the
+ * file via the Cache API so the service worker can serve it later, which works
+ * when the host allows it (CORS / no redirect) and silently no-ops otherwise.
+ */
+function RecordingPlayer({ url }: { url: string }) {
+  const [saved, setSaved] = useState<'idle' | 'saving' | 'done' | 'failed'>('idle');
+  const saveOffline = async () => {
+    if (!('caches' in window)) return setSaved('failed');
+    setSaved('saving');
+    try {
+      const cache = await caches.open('vv-recordings');
+      await cache.add(new Request(url, { mode: 'no-cors' }));
+      setSaved('done');
+    } catch {
+      setSaved('failed');
+    }
+  };
+  return (
+    <div className="muted-box" style={{ marginTop: 10 }}>
+      <div style={{ marginBottom: 6 }}>▶ Recording</div>
+      <audio controls preload="none" src={url} style={{ width: '100%' }}>
+        <a href={url}>Open the recording</a>
+      </audio>
+      <div className="btn-row" style={{ marginTop: 6 }}>
+        <button className="btn ghost small" onClick={saveOffline} disabled={saved === 'saving' || saved === 'done'}>
+          {saved === 'done'
+            ? '✓ Saved for offline'
+            : saved === 'saving'
+              ? 'Saving…'
+              : saved === 'failed'
+                ? 'Couldn’t save — will stream online'
+                : '⬇ Save for offline'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -387,6 +430,7 @@ function HymnStep({ step }: { step: RunStep }) {
 
   useEffect(() => {
     if (choice?.playMidi && midiUrl) {
+      armAudioUnlock(); // iOS: resume Web Audio on the next tap
       loadMidiPlayer().then(() => setPlayerReady(true)).catch(() => setPlayerReady(false));
     }
   }, [choice?.playMidi, midiUrl]);
@@ -410,7 +454,13 @@ function HymnStep({ step }: { step: RunStep }) {
       {choice.playMidi && midiUrl ? (
         <div ref={playerRef} style={{ marginTop: 10 }}>
           {playerReady ? (
-            <midi-player src={midiUrl} sound-font="" />
+            <>
+              <midi-player src={midiUrl} sound-font="" />
+              <p className="subtle" style={{ fontSize: 12, marginTop: 4 }}>
+                On iPhone/iPad, turn off the side silent switch — it mutes this kind of playback.
+                (Spoken text and recordings aren’t affected.)
+              </p>
+            </>
           ) : (
             <a className="link" href={midiUrl} target="_blank" rel="noreferrer">
               Open the MIDI for “{tune?.name}” →

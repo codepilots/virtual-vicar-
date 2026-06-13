@@ -23,7 +23,7 @@ officiant's voice directly via text‑to‑speech.
 | Locate a MIDI for the tune; multiple settings; verses/choruses & order | `HymnPicker` — pick the tune/setting, number of verses, whether to sing the chorus, and the exact order (e.g. `v1, chorus, v2`). 33 public-domain tune MIDIs are bundled (`public/midi/`, credits in `public/midi/CREDITS.md`) and play offline |
 | Option to play the MIDI or not | Per‑hymn "Play the tune" toggle; an embedded MIDI player loads on demand, with an open/download link fallback |
 | As many or few hymns as you like | Each hymn slot is independent and removable |
-| Address: suggest blogs/podcasts from notable Anglican voices | `src/data/addressResources.ts` + your own notes field |
+| Reflection: suggest blogs/podcasts from notable Anglican voices | `src/data/addressResources.ts` + your own notes field. Off by default and gated behind a Settings toggle (with a reminder that a lay person needs the incumbent’s permission to preach — Canon B 18) |
 | Filter by kind of congregation | Congregation type (traditional, contemporary, all‑age, family, cathedral, small/rural) filters hymn & address suggestions |
 | Easy, step‑by‑step run mode with a Skip option | `RunMode` — one card at a time, **Skip** on every step, optional spoken officiant parts (TTS) |
 

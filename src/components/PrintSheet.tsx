@@ -104,7 +104,7 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
             ) : step.kind === 'sermon' ? (
               <>
                 <p className="sheet-text subtle">
-                  The Address.
+                  The Reflection.
                   {step.address?.itemTitle
                     ? ` Drawing on “${step.address.itemTitle}”${step.address.resourceTitle ? ` — ${step.address.resourceTitle}` : ''}.`
                     : step.address?.resourceTitle

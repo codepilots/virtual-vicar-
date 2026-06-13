@@ -13,9 +13,27 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
-      // Precache the bundled public-domain hymn MIDIs so "Play the tune"
-      // works offline (the files total ~350 kB).
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,mid}'] },
+      workbox: {
+        // Precache the bundled public-domain hymn MIDIs so "Play the tune"
+        // works offline (the files total ~350 kB).
+        globPatterns: ['**/*.{js,css,html,svg,mid}'],
+        // Cache reflection recordings (podcast audio) on play / on "Save for
+        // offline", and serve them back when offline. Cross-origin hosts that
+        // send CORS headers cache fully; others store an opaque response that
+        // streams while online. Same cache name as the manual save in RunMode.
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }: { request: Request }) => request.destination === 'audio',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'vv-recordings',
+              rangeRequests: true,
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Virtual Vicar',
         short_name: 'Vicar',

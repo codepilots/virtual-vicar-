@@ -184,7 +184,7 @@ function commonPrayersAndCollects(eveningCollects: boolean): ServiceSection[] {
       text: eveningCollects ? COLLECT_PERILS : COLLECT_GRACE,
     },
     { id: 'anthem', title: 'Anthem / Hymn', kind: 'hymn', role: 'all', optional: true, note: 'In quires and places where they sing, here followeth the Anthem.' },
-    { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, note: 'Optional at the daily office.' },
+    { id: 'sermon', title: 'Reflection', kind: 'sermon', role: 'officiant', optional: true, note: 'Optional at the daily office (see Settings for who may give one).' },
     { id: 'prayers', title: 'The Occasional Prayers', kind: 'prayers', role: 'officiant', optional: true, note: 'Prayers for the King’s Majesty, the Royal Family, the Clergy and People, and other occasions.' },
     { id: 'chrysostom', title: 'A Prayer of St Chrysostom', kind: 'said', role: 'officiant', optional: true, text: CHRYSOSTOM },
     { id: 'grace', title: 'The Grace', kind: 'said', role: 'all', optional: false, text: GRACE },

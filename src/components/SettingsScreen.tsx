@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { Settings } from '../lib/types';
+import type { Settings, CustomAddressSource } from '../lib/types';
 import { BIBLE_VERSIONS } from '../data/bibleVersions';
 import { HYMN_BOOKS } from '../data/hymns';
 import { CONGREGATION_TYPES, type CongregationType } from '../data/congregation';
+import { ADDRESS_RESOURCES } from '../data/addressResources';
 import { loadVoices, ttsSupported } from '../lib/tts';
 
 interface Props {
@@ -24,6 +25,38 @@ export function SettingsScreen({ settings, onChange }: Props) {
     if (owned.has(id)) owned.delete(id);
     else owned.add(id);
     set({ ownedHymnBookIds: [...owned] });
+  };
+
+  // Reflection sources: show/hide the built-ins, add/remove your own.
+  const [draft, setDraft] = useState<CustomAddressSource>({
+    id: '',
+    title: '',
+    author: '',
+    kind: 'blog',
+    url: '',
+    rssUrl: '',
+  });
+  const toggleSourceHidden = (id: string) => {
+    const hidden = new Set(settings.hiddenSourceIds);
+    if (hidden.has(id)) hidden.delete(id);
+    else hidden.add(id);
+    set({ hiddenSourceIds: [...hidden] });
+  };
+  const removeCustomSource = (id: string) =>
+    set({ customSources: settings.customSources.filter((c) => c.id !== id) });
+  const addCustomSource = () => {
+    const title = draft.title.trim();
+    const url = draft.url.trim();
+    if (!title || !url) return;
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const id = `custom-${slug || 'source'}-${settings.customSources.length + 1}`;
+    set({
+      customSources: [
+        ...settings.customSources,
+        { ...draft, id, title, url, author: draft.author.trim(), rssUrl: draft.rssUrl?.trim() || undefined },
+      ],
+    });
+    setDraft({ id: '', title: '', author: '', kind: 'blog', url: '', rssUrl: '' });
   };
 
   return (
@@ -120,6 +153,103 @@ export function SettingsScreen({ settings, onChange }: Props) {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="card">
+        <h3>The Reflection (sermon / address)</h3>
+        <p className="subtle">
+          In the Church of England, preaching is normally led by an authorised minister — a
+          bishop, priest or deacon — or a licensed lay minister such as a Reader (LLM). A lay
+          person without a licence may give a short <strong>reflection</strong> or address only
+          with the permission of the incumbent (the parish priest), under the bishop’s direction
+          (Canon&nbsp;B&nbsp;18). Turn this on only if you have that permission, and always check
+          with your incumbent.
+        </p>
+        <label className="switch">
+          <span className="sw-text">
+            <span className="t">Offer a reflection slot</span>
+            <span className="d">
+              Adds a Reflection to the service (off by default). When off, it’s hidden from the
+              wizard, the run-through and the printed sheet.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={settings.allowReflection}
+            onChange={(e) => set({ allowReflection: e.target.checked })}
+          />
+        </label>
+      </div>
+
+      <div className="card">
+        <h3>Reflection sources</h3>
+        <p className="subtle">
+          The blogs, podcasts and archives offered on the Reflection step. Untick to hide one, or
+          add your own below.
+        </p>
+        {ADDRESS_RESOURCES.map((r) => (
+          <label key={r.id} className="switch" style={{ alignItems: 'flex-start' }}>
+            <span className="sw-text">
+              <span className="t">{r.title}</span>
+              <span className="d">
+                {r.kind} · {r.author}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="toggle"
+              checked={!settings.hiddenSourceIds.includes(r.id)}
+              onChange={() => toggleSourceHidden(r.id)}
+            />
+          </label>
+        ))}
+        {settings.customSources.map((c) => (
+          <div key={c.id} className="title-row" style={{ padding: '6px 0' }}>
+            <div>
+              <strong>{c.title}</strong>
+              <div className="subtle" style={{ fontSize: 12 }}>
+                {c.kind} · {c.author || 'your source'} {c.rssUrl ? '· feed' : ''}
+              </div>
+            </div>
+            <button className="btn ghost small" onClick={() => removeCustomSource(c.id)}>
+              Remove
+            </button>
+          </div>
+        ))}
+        <details style={{ marginTop: 8 }}>
+          <summary className="link" style={{ cursor: 'pointer' }}>
+            + Add a source
+          </summary>
+          <div className="field" style={{ marginTop: 8 }}>
+            <label>Title</label>
+            <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="e.g. Our parish blog" />
+          </div>
+          <div className="field">
+            <label>Author / publisher (optional)</label>
+            <input value={draft.author} onChange={(e) => setDraft({ ...draft, author: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Kind</label>
+            <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as CustomAddressSource['kind'] })}>
+              <option value="blog">Blog</option>
+              <option value="podcast">Podcast</option>
+              <option value="video">Video</option>
+              <option value="sermon-archive">Sermon archive</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Website URL</label>
+            <input value={draft.url} onChange={(e) => setDraft({ ...draft, url: e.target.value })} placeholder="https://…" />
+          </div>
+          <div className="field">
+            <label>RSS/feed URL (optional — enables in-app latest posts)</label>
+            <input value={draft.rssUrl} onChange={(e) => setDraft({ ...draft, rssUrl: e.target.value })} placeholder="https://…/feed/" />
+          </div>
+          <button className="btn secondary small" onClick={addCustomSource} disabled={!draft.title.trim() || !draft.url.trim()}>
+            Add source
+          </button>
+        </details>
       </div>
 
       <div className="card">

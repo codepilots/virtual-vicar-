@@ -24,7 +24,19 @@ export interface AddressChoice {
   /** A specific post/episode picked from the resource's feed, if any. */
   itemTitle?: string;
   itemUrl?: string;
+  /** A recording (podcast episode) enclosure, for one-click playback. */
+  itemAudioUrl?: string;
   notes?: string;
+}
+
+/** A reflection source (blog/podcast) the user added in Settings. */
+export interface CustomAddressSource {
+  id: string;
+  title: string;
+  author: string;
+  kind: 'blog' | 'podcast' | 'video' | 'sermon-archive';
+  url: string;
+  rssUrl?: string;
 }
 
 /** The persisted user settings (Settings screen). */
@@ -42,6 +54,16 @@ export interface Settings {
    * text, Hymnary suggestions). Off = fully offline, link-outs only.
    */
   useOnlineSources: boolean;
+  /**
+   * Whether to offer the Reflection (sermon/address) slot at all. Off by
+   * default: in the C of E a lay person may give a reflection only with the
+   * incumbent's permission, so the slot is hidden until deliberately enabled.
+   */
+  allowReflection: boolean;
+  /** Built-in reflection-source ids the user has hidden. */
+  hiddenSourceIds: string[];
+  /** Reflection sources the user has added. */
+  customSources: CustomAddressSource[];
   /** Use TTS to read officiant parts aloud in run mode. */
   ttsEnabled: boolean;
   /** Preferred TTS voice name, if any. */
@@ -90,6 +112,9 @@ export const DEFAULT_SETTINGS: Settings = {
   onlyBundledMidi: false,
   congregation: null,
   useOnlineSources: true,
+  allowReflection: false,
+  hiddenSourceIds: [],
+  customSources: [],
   ttsEnabled: true,
   ttsVoice: null,
   ttsRate: 0.95,
