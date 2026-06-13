@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Settings, CustomAddressSource } from '../lib/types';
+import { DEFAULT_SETTINGS, type Settings, type CustomAddressSource } from '../lib/types';
 import { BIBLE_VERSIONS } from '../data/bibleVersions';
 import { HYMN_BOOKS } from '../data/hymns';
 import { CONGREGATION_TYPES, type CongregationType } from '../data/congregation';
@@ -375,6 +375,15 @@ export function SettingsScreen({ settings, onChange }: Props) {
             years). The hymn catalogue is a small curated seed; check numbers in your own books.
           </li>
         </ul>
+        <button
+          className="btn ghost small"
+          style={{ marginTop: 8 }}
+          onClick={() => {
+            if (window.confirm('Reset all settings to their defaults?')) onChange(DEFAULT_SETTINGS);
+          }}
+        >
+          Reset settings to defaults
+        </button>
       </div>
     </div>
   );

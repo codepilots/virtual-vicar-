@@ -4,6 +4,7 @@ import type { CongregationType } from '../data/congregation';
 import { suggestHymns, getHymn, getHymnBook, hymnHasBundledMidi, type Hymn } from '../data/hymns';
 import { tuneHasPlayableMidi, hasCuratedListenPage, listenUrl } from '../lib/midi';
 import { useHymnaryHits } from '../lib/api/hooks';
+import { pressable } from '../lib/a11y';
 import type { ScriptureRef } from '../data/readings';
 import type { HymnChoice } from '../lib/types';
 
@@ -112,7 +113,7 @@ export function HymnPicker({
             <p className="subtle">No hymns match your books yet — add hymn books in Settings.</p>
           )}
           {suggestions.map((h) => (
-            <div key={h.id} className="card pressable" onClick={() => choose(h)}>
+            <div key={h.id} className="card pressable" onClick={() => choose(h)} {...pressable(() => choose(h))} aria-label={`Choose ${h.title}`}>
               <strong>{h.title}</strong>
               <div className="subtle">
                 {hymnHasBundledMidi(h) ? '♫ tune included · ' : ''}

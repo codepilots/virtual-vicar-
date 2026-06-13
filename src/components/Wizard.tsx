@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Settings, ServicePlan, HymnChoice } from '../lib/types';
 import { SERVICES, getService, isPlaceholderText, type ServiceSection } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
@@ -22,6 +22,7 @@ import { saveSectionPrefs } from '../lib/storage';
 import { parseCommonWorshipService } from '../lib/cwParser';
 import { detectAlternativeGroups, type AltGroup } from '../lib/alternatives';
 import { extractCwReferences, type CwReference } from '../lib/cwReferences';
+import { pressable } from '../lib/a11y';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
@@ -30,6 +31,8 @@ import { FeedPreview } from './FeedPreview';
 interface Props {
   settings: Settings;
   initialPlan: ServicePlan | null;
+  /** Called on every edit so the app can keep/persist the working plan. */
+  onChange: (plan: ServicePlan) => void;
   onComplete: (plan: ServicePlan) => void;
   onPrint: (plan: ServicePlan) => void;
   onCancel: () => void;
@@ -61,11 +64,24 @@ function sectionGroup(s: Section): string {
   return 'prep';
 }
 
-export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
+export function Wizard({ settings, initialPlan, onChange, onComplete, onPrint }: Props) {
   const [step, setStep] = useState(0);
   const [plan, setPlan] = useState<ServicePlan>(
     () => initialPlan ?? defaultPlan(SERVICES[0].id, todayIso()),
   );
+
+  // Push every edit up to the app (which persists it), so leaving the wizard
+  // never drops work. Skip the initial mount so opening the planner doesn't
+  // create a plan from nothing.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    onChange(plan);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
 
   const day = useMemo(() => dayFromIso(plan.dateIso), [plan.dateIso]);
   const service = getService(plan.serviceId)!;
@@ -92,6 +108,13 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   };
 
   const sectionOn = (s: Section) => !s.optional || (plan.includedSections[s.id] ?? false);
+
+  // Has the leader put anything into this plan worth warning about before a
+  // service switch wipes it?
+  const planHasWork = () =>
+    Object.keys(plan.customTexts ?? {}).length > 0 ||
+    plan.hymns.length > 0 ||
+    Boolean(plan.address.resourceId || plan.address.notes);
 
   // Which prepared intercession forms to include in run mode. Absent = offer
   // all (matching run mode's fallback); selecting materialises an explicit set.
@@ -158,14 +181,17 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   const steps: string[] = ['setup', ...activeGroups, 'review'];
   const stepCount = steps.length;
   const stepKey = steps[Math.min(step, stepCount - 1)];
+  const stepTitle =
+    stepKey === 'setup' ? 'Service & date' : stepKey === 'review' ? 'Review' : GROUP_TITLES[stepKey];
 
-  const next = () => {
+  const goToStep = (target: number) => {
     // Leaving the setup page, distribute any pasted whole service. If it can't
-    // be parsed, stay put and show why rather than advancing silently.
-    if (stepKey === 'setup' && wholePaste.trim() && !distributeWholeService()) return;
-    setStep((s) => Math.min(stepCount - 1, s + 1));
+    // be parsed, stay put and show why rather than moving on silently.
+    if (stepKey === 'setup' && target !== 0 && wholePaste.trim() && !distributeWholeService()) return;
+    setStep(Math.max(0, Math.min(stepCount - 1, target)));
   };
-  const back = () => setStep((s) => Math.max(0, s - 1));
+  const next = () => goToStep(step + 1);
+  const back = () => goToStep(step - 1);
 
   const dailyOffice = isDailyOffice(service);
   const overlayRefs = dailyOffice ? [] : readings.refs;
@@ -465,19 +491,24 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                 </div>
               </div>
             ) : (
-              suggestAddressResources(day.season, settings.congregation, sources).map((r) => (
+              suggestAddressResources(day.season, settings.congregation, sources).map((r) => {
+                const selectResource = () => {
+                  update({
+                    address:
+                      plan.address.resourceId === r.id
+                        ? { ...plan.address }
+                        : { ...plan.address, resourceId: r.id, itemTitle: undefined, itemUrl: undefined, itemAudioUrl: undefined },
+                  });
+                  setPickingSource(false);
+                };
+                return (
                 <div
                   key={r.id}
                   className="card pressable"
-                  onClick={() => {
-                    update({
-                      address:
-                        plan.address.resourceId === r.id
-                          ? { ...plan.address }
-                          : { ...plan.address, resourceId: r.id, itemTitle: undefined, itemUrl: undefined, itemAudioUrl: undefined },
-                    });
-                    setPickingSource(false);
-                  }}
+                  onClick={selectResource}
+                  {...pressable(selectResource)}
+                  aria-pressed={plan.address.resourceId === r.id}
+                  aria-label={`Use ${r.title} for the reflection`}
                   style={{
                     borderColor: plan.address.resourceId === r.id ? 'var(--primary)' : undefined,
                     borderWidth: plan.address.resourceId === r.id ? 2 : 1,
@@ -511,7 +542,8 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                     }}
                   />
                 </div>
-              ))
+                );
+              })
             )}
 
             <div className="card">
@@ -546,9 +578,19 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   return (
     <div>
       <div className="steps">
-        {Array.from({ length: stepCount }).map((_, i) => (
-          <div key={i} className={`dot ${i < step ? 'done' : i === step ? 'active' : ''}`} />
+        {steps.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`dot ${i < step ? 'done' : i === step ? 'active' : ''}`}
+            aria-label={`Go to step ${i + 1} of ${stepCount}`}
+            aria-current={i === step ? 'step' : undefined}
+            onClick={() => goToStep(i)}
+          />
         ))}
+      </div>
+      <div className="subtle" style={{ textAlign: 'center', fontSize: 13, margin: '-4px 0 10px' }}>
+        Step {step + 1} of {stepCount} · {stepTitle}
       </div>
 
       {/* Page 1 — date, service & whole-service paste */}
@@ -568,25 +610,40 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
           {serviceListOpen ? (
             <div style={{ marginTop: 12 }}>
               <p className="subtle">Choose a service — only offices a lay person may lead are listed.</p>
-              {SERVICES.map((s) => (
-                <div
-                  key={s.id}
-                  className="card pressable"
-                  onClick={() => {
-                    if (s.id !== plan.serviceId) setPlan(defaultPlan(s.id, plan.dateIso));
-                    setServiceListOpen(false);
-                  }}
-                  style={{
-                    borderColor: s.id === plan.serviceId ? 'var(--primary)' : undefined,
-                    borderWidth: s.id === plan.serviceId ? 2 : 1,
-                  }}
-                >
-                  <strong>{s.name}</strong>
-                  <div className="subtle">
-                    {s.tradition} · {s.summary}
+              {SERVICES.map((s) => {
+                const selectService = () => {
+                  if (s.id !== plan.serviceId) {
+                    if (
+                      planHasWork() &&
+                      !window.confirm(
+                        'Switch service? This clears the readings, hymns and notes you’ve set for this plan.',
+                      )
+                    )
+                      return;
+                    setPlan(defaultPlan(s.id, plan.dateIso));
+                  }
+                  setServiceListOpen(false);
+                };
+                const selected = s.id === plan.serviceId;
+                return (
+                  <div
+                    key={s.id}
+                    className="card pressable"
+                    onClick={selectService}
+                    {...pressable(selectService)}
+                    aria-pressed={selected}
+                    style={{
+                      borderColor: selected ? 'var(--primary)' : undefined,
+                      borderWidth: selected ? 2 : 1,
+                    }}
+                  >
+                    <strong>{s.name}</strong>
+                    <div className="subtle">
+                      {s.tradition} · {s.summary}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="card" style={{ marginTop: 12, borderColor: 'var(--primary)', borderWidth: 2 }}>

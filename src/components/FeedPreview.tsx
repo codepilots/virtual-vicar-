@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AddressResource } from '../data/addressResources';
 import type { FeedItem } from '../lib/api/rss';
 import { useFeedItems } from '../lib/api/hooks';
+import { pressable } from '../lib/a11y';
 
 /**
  * "Latest from this feed" expander on an address-resource card. Fetches the
@@ -73,6 +74,7 @@ export function FeedPreview({
                     e.stopPropagation();
                     onSelectItem?.(item);
                   }}
+                  {...(onSelectItem ? { ...pressable(() => onSelectItem(item)), 'aria-pressed': selected } : {})}
                   style={
                     onSelectItem
                       ? {

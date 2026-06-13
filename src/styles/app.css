@@ -20,6 +20,53 @@
   box-sizing: border-box;
 }
 
+/* Accessibility: a visible focus ring for keyboard users on any control. */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visually hidden but available to screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link — hidden until focused, then jumps to the main content. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 100;
+  background: var(--primary);
+  color: var(--primary-ink);
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 8px;
+}
+
 html,
 body,
 #root {
@@ -298,6 +345,14 @@ a.link {
   height: 5px;
   border-radius: 3px;
   background: var(--line);
+  /* Reset the button + give a taller (paddinged) tap target while the visible
+     bar stays 5px (background painted to the content box only). */
+  border: 0;
+  padding: 7px 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-clip: content-box;
 }
 .steps .dot.done {
   background: var(--accent);
@@ -435,6 +490,49 @@ a.link {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+}
+/* The step counter doubles as a "jump to step" trigger. */
+.jump-btn {
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 2px 0;
+  text-align: left;
+}
+.jump-list {
+  margin: 8px 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  max-height: 45vh;
+  overflow: auto;
+  background: var(--surface);
+}
+.jump-item {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  font: inherit;
+  padding: 9px 12px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.jump-item:last-child {
+  border-bottom: 0;
+}
+.jump-item.current {
+  background: #efeae1;
+  font-weight: 600;
+}
+.jump-num {
+  color: var(--muted);
+  min-width: 1.4em;
+  text-align: right;
 }
 .text-size-btn {
   border: 1px solid var(--line);

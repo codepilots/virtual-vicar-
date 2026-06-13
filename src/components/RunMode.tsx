@@ -35,6 +35,10 @@ export function RunMode({ plan, settings, onExit }: Props) {
   const [index, setIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [scale, setScale] = useState(settings.runTextScale || 1);
+  const [showJump, setShowJump] = useState(false);
+  // Session voice toggle (starts from the saved setting); when off, steps don't
+  // auto-read, so the app won't talk over a leader who's reading themselves.
+  const [voice, setVoice] = useState(settings.ttsEnabled);
 
   // Keep the screen awake while leading.
   useWakeLock(true);
@@ -90,11 +94,11 @@ export function RunMode({ plan, settings, onExit }: Props) {
 
   const spokenText = step ? spokenTextFor(step) : '';
 
-  // Auto-read officiant text when enabled and the step changes.
+  // Auto-read officiant text when the voice is on and the step changes.
   useEffect(() => {
     cancelSpeech();
     setSpeaking(false);
-    if (!step || !settings.ttsEnabled) return;
+    if (!step || !voice) return;
     const shouldSpeak =
       spokenText && (step.role === 'officiant' || step.kind === 'collect' || step.kind === 'responsive');
     if (shouldSpeak) {
@@ -112,7 +116,21 @@ export function RunMode({ plan, settings, onExit }: Props) {
   const go = (delta: number) => {
     cancelSpeech();
     setSpeaking(false);
+    setShowJump(false);
     setIndex((i) => Math.max(0, Math.min(steps.length, i + delta)));
+  };
+
+  const jumpTo = (i: number) => {
+    cancelSpeech();
+    setSpeaking(false);
+    setShowJump(false);
+    setIndex(i);
+  };
+
+  const toggleVoice = () => {
+    cancelSpeech();
+    setSpeaking(false);
+    setVoice((v) => !v);
   };
 
   const toggleSpeak = () => {
@@ -146,11 +164,28 @@ export function RunMode({ plan, settings, onExit }: Props) {
 
   return (
     <div className="run" style={{ ['--run-scale' as string]: scale }}>
+      {/* Announce each step to screen readers as it changes. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        Step {index + 1} of {steps.length}.{' '}
+        {step.role === 'all'
+          ? 'Said by all.'
+          : step.role === 'officiant'
+            ? 'Led by you.'
+            : step.role === 'reader'
+              ? 'Read by a reader.'
+              : ''}{' '}
+        {step.title}.
+      </div>
       <div className="run-step">
         <div className="run-progress">
-          <span>
-            Step {index + 1} of {steps.length} · {day.name}
-          </span>
+          <button
+            className="jump-btn"
+            onClick={() => setShowJump((j) => !j)}
+            aria-expanded={showJump}
+            title="Jump to a step"
+          >
+            Step {index + 1} of {steps.length} · {day.name} ▾
+          </button>
           <span className="run-tools">
             ~{remainingMinutes} min left
             <button
@@ -169,6 +204,20 @@ export function RunMode({ plan, settings, onExit }: Props) {
             </button>
           </span>
         </div>
+        {showJump && (
+          <div className="jump-list">
+            {steps.map((s, i) => (
+              <button
+                key={i}
+                className={`jump-item ${i === index ? 'current' : ''}`}
+                onClick={() => jumpTo(i)}
+              >
+                <span className="jump-num">{i + 1}</span>
+                {s.title}
+              </button>
+            ))}
+          </div>
+        )}
         <span className={`role-badge ${step.role}`}>
           {step.role === 'all' ? 'All' : step.role === 'officiant' ? 'You (Officiant)' : step.role === 'reader' ? 'Reader' : ''}
         </span>
@@ -183,15 +232,21 @@ export function RunMode({ plan, settings, onExit }: Props) {
         <button className="btn ghost small" onClick={() => go(-1)} disabled={index === 0}>
           ‹ Prev
         </button>
-        {settings.ttsEnabled && spokenText && (
+        {settings.ttsEnabled && (
+          <button
+            className="btn ghost small"
+            onClick={toggleVoice}
+            title={voice ? 'Voice on — reads each step aloud' : 'Voice off'}
+          >
+            {voice ? '🔊 Voice' : '🔇 Muted'}
+          </button>
+        )}
+        {voice && spokenText && (
           <button className="btn secondary small" onClick={toggleSpeak}>
-            {speaking ? '◼ Stop' : '🔊 Read'}
+            {speaking ? '◼ Stop' : '↻ Re-read'}
           </button>
         )}
         <div style={{ flex: 1 }} />
-        <button className="btn secondary small" onClick={() => go(1)}>
-          Skip
-        </button>
         <button className="btn small" onClick={() => go(1)}>
           {index === steps.length - 1 ? 'End ›' : 'Next ›'}
         </button>

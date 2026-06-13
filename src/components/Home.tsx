@@ -3,6 +3,7 @@ import type { Settings, ServicePlan } from '../lib/types';
 import { dayFromIso, todayIso } from '../lib/plan';
 import { getService } from '../data/services';
 import { sharePlan, downloadPlan, importPlanFile } from '../lib/share';
+import { pressable } from '../lib/a11y';
 import { DayBanner } from './DayBanner';
 
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
   onImportPlan: (plan: ServicePlan) => void;
 }
 
-export function Home({ settings, plan, canRun, onPlan, onRun, onPrint, onImportPlan }: Props) {
+export function Home({ settings, plan, canRun, onPlan, onRun, onPrint, onSettings, onImportPlan }: Props) {
   const today = useMemo(() => dayFromIso(todayIso()), []);
   const planService = plan ? getService(plan.serviceId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
@@ -53,6 +54,16 @@ export function Home({ settings, plan, canRun, onPlan, onRun, onPrint, onImportP
       <button className="btn" onClick={onPlan} style={{ marginTop: 8 }}>
         ✛ Plan a service
       </button>
+
+      {!plan && !settings.congregation && (
+        <div className="muted-box" style={{ marginTop: 12 }}>
+          New here? Set your Bible version, hymn books and congregation in{' '}
+          <button className="link" onClick={onSettings} style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer' }}>
+            Settings
+          </button>{' '}
+          and I’ll tailor the suggestions.
+        </div>
+      )}
 
       {plan && planService && (
         <div className="card" style={{ marginTop: 16 }}>
@@ -109,8 +120,11 @@ export function Home({ settings, plan, canRun, onPlan, onRun, onPrint, onImportP
         </div>
       )}
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>Your defaults</h3>
+      <div className="card pressable" style={{ marginTop: 16 }} onClick={onSettings} {...pressable(onSettings)} aria-label="Your defaults — open Settings">
+        <div className="title-row">
+          <h3>Your defaults</h3>
+          <span className="link">Change ›</span>
+        </div>
         <div className="subtle">
           Bible: {settings.bibleVersionId.toUpperCase()} · Hymn books:{' '}
           {settings.ownedHymnBookIds.length || 'none set'} · Congregation:{' '}

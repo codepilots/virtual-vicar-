@@ -25,7 +25,8 @@ officiant's voice directly via text‑to‑speech.
 | As many or few hymns as you like | Each hymn slot is independent and removable |
 | Reflection: suggest blogs/podcasts from notable Anglican voices | `src/data/addressResources.ts` + your own notes field. Off by default and gated behind a Settings toggle (with a reminder that a lay person needs the incumbent’s permission to preach — Canon B 18) |
 | Filter by kind of congregation | Congregation type (traditional, contemporary, all‑age, family, cathedral, small/rural) filters hymn & address suggestions |
-| Easy, step‑by‑step run mode with a Skip option | `RunMode` — one card at a time, **Skip** on every step, optional spoken officiant parts (TTS) |
+| Easy, step‑by‑step run mode | `RunMode` — one card at a time, Prev/Next plus a tap‑to‑jump step list, adjustable text size, screen wake‑lock, and an optional spoken voice (TTS) you can mute mid‑service |
+| Accessible by keyboard & screen reader | Pinch‑zoom enabled; clickable cards are real buttons (Enter/Space, focus rings via `:focus-visible`); a skip‑to‑content link; `aria-current` on the wizard stepper; a live region announces each run‑mode step; `prefers-reduced-motion` respected (`src/lib/a11y.ts`) |
 
 ## Running locally
 
@@ -136,8 +137,13 @@ src/
     storage.ts         Persist settings & plan (localStorage)
     tts.ts             Web Speech "vicar voice"
     midi.ts            Lazy MIDI player loader + search links
+    cwParser.ts        Distribute a pasted CW service into sections
+    alternatives.ts    Detect/resolve "or" alternatives in pasted text
+    cwReferences.ts    Surface "(page N)" / web links as Common Worship lookups
+    a11y.ts            Keyboard-operable "pressable" card helper
     types.ts           Shared types
-  components/  React UI (Home, SettingsScreen, Wizard, HymnPicker, RunMode, DayBanner)
+  components/  React UI (Home, SettingsScreen, Wizard, HymnPicker, RunMode,
+               RecordingPlayer, Liturgy, FeedPreview, PrintSheet, DayBanner)
 ```
 
 The **liturgical calendar engine is fully implemented and verified** (Easter

@@ -36,6 +36,9 @@ export function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <header className="topbar">
         {screen.name !== 'home' && (
           <button className="back" onClick={() => setScreen({ name: 'home' })} aria-label="Back">
@@ -51,7 +54,7 @@ export function App() {
         )}
       </header>
 
-      <main>
+      <main id="main">
         {screen.name === 'home' && (
           <Home
             settings={settings}
@@ -71,6 +74,9 @@ export function App() {
           <Wizard
             settings={settings}
             initialPlan={plan}
+            // Keep the app's plan (and localStorage) in step with edits so
+            // leaving the wizard via "‹ Home" never loses work.
+            onChange={(p) => setPlan(p)}
             onComplete={(p) => {
               setPlan(p);
               setScreen({ name: 'run' });
@@ -91,8 +97,9 @@ export function App() {
       </main>
 
       <div className="footer-note">
-        For lay-led offices only (Morning &amp; Evening Prayer, Night Prayer, A Service of the
-        Word). Always check your incumbent’s guidance. Liturgical texts © their respective owners;
+        For lay-led offices only (Morning Prayer, Prayer During the Day, Evening Prayer, Night
+        Prayer and A Service of the Word). Always check your incumbent’s guidance. Liturgical texts
+        © their respective owners;
         bundled public-domain texts are hand-transcribed and unchecked items are marked ⚠ — see
         Settings → About &amp; sources.
       </div>

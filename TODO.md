@@ -91,6 +91,16 @@ ideas parked for later. (See `README.md` for what's already built.)
   muted by it on iOS). Not fully verifiable without a device; the @magenta
   player owns its own audio context, so if it persists, the fallback is to
   prefer the recording/“hear the tune” link on iOS.
+- ~~**Usability pass**~~ — done: wizard edits autosave (no loss on “‹ Home”);
+  confirm before a service switch wipes work; per-step wizard page with a
+  labelled, tappable stepper; run-mode step-jump list; mute/“Voice” toggle in
+  run mode; tappable “Your defaults” + first-run nudge; reset-to-defaults in
+  Settings. Still open: split the long Settings page with in-page anchors.
+- ~~**Accessibility pass**~~ — done: pinch-zoom re-enabled; clickable cards are
+  keyboard-operable buttons (`pressable`, `aria-pressed`); `:focus-visible`
+  rings; skip-to-content link; `aria-current` stepper; run-mode `aria-live`
+  step announcements; `prefers-reduced-motion`. Body/muted text contrast checked
+  (~5.1:1, passes AA). Still open: an automated axe/Lighthouse run on a device.
 - **Expand the Coverdale Psalter** to all 150 (and support verse-range
   display once the texts carry per-verse structure).
 - **Hymn catalogue at scale** — import a proper index (e.g. from Hymnary data
