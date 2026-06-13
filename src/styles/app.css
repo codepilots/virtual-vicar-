@@ -378,6 +378,35 @@ a.link {
 .vl-gap {
   height: 0.6em;
 }
+/* Psalm/canticle verse: hanging verse number, half-verses split at the ♦. */
+.vl-verse {
+  display: grid;
+  grid-template-columns: 1.7em 1fr;
+  column-gap: 0.4em;
+  margin: 0.28em 0;
+}
+.vl-verse-num {
+  color: var(--muted);
+  font-size: 0.72em;
+  text-align: right;
+  padding-top: 0.35em;
+}
+.vl-halfverse {
+  display: block;
+}
+/* Second and later half-verses sit slightly in, as in a printed psalter. */
+.vl-halfverse + .vl-halfverse {
+  padding-left: 1em;
+  text-indent: -1em;
+}
+.vl-point {
+  color: var(--muted);
+}
+.vl-refrain-cue {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.8em;
+}
 .run-progress {
   display: flex;
   align-items: center;
