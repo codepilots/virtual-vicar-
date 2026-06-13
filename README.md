@@ -16,7 +16,7 @@ officiant's voice directly via text‑to‑speech.
 | Requirement | How it's met |
 | --- | --- |
 | Choose from a list of suitable (lay-led) services | `src/data/services.ts` (Common Worship offices) + `src/data/bcp.ts` (BCP 1662 Mattins & Evensong, full text) |
-| Indicate which optional parts to include / omit | Wizard step 2 — every optional section has a toggle (all off by default; your last selections per service are remembered); fixed parts are locked on |
+| Indicate which optional parts to include / omit | The wizard runs a page per part of the service (Preparation, Psalms & Readings, Canticles, Prayers, Hymns, Reflection); each optional section has a toggle (all off by default; your last selections per service are remembered); fixed parts are locked on |
 | Correct readings & collect for the day | `src/data/calendar.ts` computes the liturgical day → live RCL readings via the LectServe API, falling back to the local table and deep‑links to the official C of E lectionary/collects |
 | Choice of Bible versions, linked to book/chapter/verse | `src/data/bibleVersions.ts` builds passage URLs (NRSVA, NIVUK, ESV, KJV, CEV, MSG…) |
 | Suggest hymns; user configures which hymn books are available | Hymn books chosen in **Settings**; `suggestHymns()` only proposes hymns you own and scores them by season & congregation. An optional Settings filter limits suggestions to hymns whose tune MIDI is bundled (always playable, even offline) |

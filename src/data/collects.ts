@@ -299,12 +299,17 @@ export function officialCollectUrl(_day: LiturgicalDay): string {
 
 /**
  * The collect for the day. For Prayer Book services we prefer the bundled
- * public-domain BCP collect; otherwise the Common Worship seed first, then the
- * BCP text (clearly attributed), and finally the official link in the UI.
+ * public-domain BCP collect; for Common Worship we use only the CW seed (and
+ * otherwise the official link in the UI) — a CW service must not be given a BCP
+ * collect, which is a different prayer. With no tradition stated, fall back
+ * across both as a best effort.
  */
 export function getCollect(day: LiturgicalDay, tradition?: Tradition): Collect | undefined {
   if (tradition === 'Book of Common Prayer') {
     return getBcpCollect(day) ?? COLLECTS[day.id];
+  }
+  if (tradition === 'Common Worship') {
+    return COLLECTS[day.id];
   }
   return COLLECTS[day.id] ?? getBcpCollect(day);
 }

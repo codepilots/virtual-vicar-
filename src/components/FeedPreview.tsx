@@ -11,16 +11,23 @@ import { useFeedItems } from '../lib/api/hooks';
  * Tapping an item selects that specific post/episode into the plan (via
  * `onSelectItem`); the external-link arrow opens it to read.
  */
+/** A stable identity for a feed item: the episode audio when present (unique
+ *  per episode — podcast feeds sometimes share one <link> across episodes),
+ *  else the post link. */
+function itemKey(item: FeedItem): string {
+  return item.audioUrl || item.link;
+}
+
 export function FeedPreview({
   resource,
   online,
-  selectedUrl,
+  selectedKey,
   onSelectItem,
 }: {
   resource: AddressResource;
   online: boolean;
-  /** The item URL currently chosen in the plan, to mark the selection. */
-  selectedUrl?: string;
+  /** Identity of the item chosen in the plan, to mark exactly one selection. */
+  selectedKey?: string;
   /** Called when the user picks an item to build into the plan. */
   onSelectItem?: (item: FeedItem) => void;
 }) {
@@ -57,11 +64,11 @@ export function FeedPreview({
             </p>
           )}
           <ul className="feed-items">
-            {feed.items.map((item) => {
-              const selected = Boolean(selectedUrl) && selectedUrl === item.link;
+            {feed.items.map((item, i) => {
+              const selected = Boolean(selectedKey) && selectedKey === itemKey(item);
               return (
                 <li
-                  key={item.link}
+                  key={`${itemKey(item)}-${i}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectItem?.(item);

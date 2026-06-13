@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { Settings, ServicePlan, HymnChoice } from '../lib/types';
-import { SERVICES, getService, isPlaceholderText } from '../data/services';
+import { SERVICES, getService, isPlaceholderText, type ServiceSection } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
 import { officialLectionaryUrl } from '../data/readings';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { useDayReadings } from '../lib/api/hooks';
-import { suggestAddressResources, resolveAddressResources } from '../data/addressResources';
+import { suggestAddressResources, resolveAddressResources, getAddressResource } from '../data/addressResources';
+import { RecordingPlayer } from './RecordingPlayer';
 import {
   buildRunSteps,
   dayFromIso,
@@ -31,7 +32,31 @@ interface Props {
   onCancel: () => void;
 }
 
-const STEP_COUNT = 6;
+type Section = ServiceSection;
+
+// The wizard is one setup page, then a page per logical group of the service,
+// then review. A group appears only if the chosen service has sections in it
+// (and the Reflection only when enabled in Settings).
+const GROUP_ORDER = ['prep', 'readings', 'canticles', 'prayers', 'hymns', 'reflection'] as const;
+const GROUP_TITLES: Record<string, string> = {
+  prep: 'Preparation & opening',
+  readings: 'Psalms & Readings',
+  canticles: 'Canticles',
+  prayers: 'Prayers, Collect & the Lord’s Prayer',
+  hymns: 'Hymns',
+  reflection: 'The Reflection',
+};
+
+function sectionGroup(s: Section): string {
+  if (s.kind === 'hymn') return 'hymns';
+  if (s.kind === 'sermon') return 'reflection';
+  if (/(?:^|-)canticle$|nunc|te-deum|benedictus|magnificat|venite/i.test(s.id)) return 'canticles';
+  if (s.kind === 'psalm' || s.kind === 'reading') return 'readings';
+  if (s.kind === 'prayers' || s.kind === 'collect') return 'prayers';
+  if (/lords-prayer|suffrage|creed|responsor|response|conclusion|grace|dismissal|blessing|chrysostom/i.test(s.id))
+    return 'prayers';
+  return 'prep';
+}
 
 export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   const [step, setStep] = useState(0);
@@ -63,17 +88,13 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
     update({ customTexts });
   };
 
-  const sectionOn = (s: (typeof service.sections)[number]) =>
-    !s.optional || (plan.includedSections[s.id] ?? false);
+  const sectionOn = (s: Section) => !s.optional || (plan.includedSections[s.id] ?? false);
 
   // Which prepared intercession forms to include in run mode. Absent = offer
   // all (matching run mode's fallback); selecting materialises an explicit set.
-  const selectedPrayerIds =
-    plan.intercessions?.preparedIds ?? PREPARED_PRAYERS.map((p) => p.id);
+  const selectedPrayerIds = plan.intercessions?.preparedIds ?? PREPARED_PRAYERS.map((p) => p.id);
   const togglePreparedPrayer = (id: string, on: boolean) => {
-    const next = on
-      ? [...selectedPrayerIds, id]
-      : selectedPrayerIds.filter((x) => x !== id);
+    const next = on ? [...selectedPrayerIds, id] : selectedPrayerIds.filter((x) => x !== id);
     update({ intercessions: { preparedIds: next } });
   };
 
@@ -85,10 +106,18 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
     update({ alternatives: { ...plan.alternatives, [sectionId]: current } });
   };
 
+  const setHymn = (choice: HymnChoice | undefined, sectionId: string) => {
+    const hymns = plan.hymns.filter((h) => h.sectionId !== sectionId);
+    if (choice) hymns.push(choice);
+    update({ hymns });
+  };
+
   // Whole-service paste: parse one block from the C of E Daily Prayer page and
   // distribute it into the matching sections.
   const [wholePaste, setWholePaste] = useState('');
   const [parseSummary, setParseSummary] = useState<string | null>(null);
+  // Whether the reflection-source list is expanded for (re)picking.
+  const [pickingSource, setPickingSource] = useState(false);
 
   const distributeWholeService = () => {
     const result = parseCommonWorshipService(wholePaste, service);
@@ -98,7 +127,6 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
       );
       return;
     }
-    // Merge parsed text in, and switch on any optional section we filled.
     const customTexts = { ...plan.customTexts, ...result.texts };
     const includedSections = { ...plan.includedSections };
     for (const id of result.filledIds) {
@@ -115,44 +143,368 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
     setWholePaste('');
   };
 
-  const next = () => setStep((s) => Math.min(STEP_COUNT - 1, s + 1));
-  const back = () => setStep((s) => Math.max(0, s - 1));
+  // Pages: setup, the groups present in this service, then review.
+  const groupSections = (id: string) =>
+    service.sections.filter(
+      (s) => sectionGroup(s) === id && (s.kind !== 'sermon' || settings.allowReflection),
+    );
+  const activeGroups = GROUP_ORDER.filter((id) => groupSections(id).length > 0);
+  const steps: string[] = ['setup', ...activeGroups, 'review'];
+  const stepCount = steps.length;
+  const stepKey = steps[Math.min(step, stepCount - 1)];
 
-  const hymnSections = service.sections.filter(
-    (s) => s.kind === 'hymn' && (plan.includedSections[s.id] ?? false),
-  );
+  const next = () => setStep((s) => Math.min(stepCount - 1, s + 1));
+  const back = () => setStep((s) => Math.max(0, s - 1));
 
   const estMinutes = useMemo(
     () => estimateDuration(overlayLectionary(buildRunSteps(plan, settings), readings.refs)).totalMinutes,
     [plan, settings, readings.refs],
   );
 
-  const setHymn = (choice: HymnChoice | undefined, sectionId: string) => {
-    const hymns = plan.hymns.filter((h) => h.sectionId !== sectionId);
-    if (choice) hymns.push(choice);
-    update({ hymns });
+  // --- per-section configuration card (prep / canticles / prayers / hymns) ---
+  const renderSection = (s: Section) => {
+    const on = sectionOn(s);
+    const custom = plan.customTexts?.[s.id] ?? '';
+    return (
+      <div key={s.id} className="card">
+        <label className="switch">
+          <span className="sw-text">
+            <span className="t">{s.title}</span>
+            <span className="d">
+              {s.optional ? 'Optional' : 'Always included'}
+              {isPlaceholderText(s.text) ? ' · text not bundled' : ''}
+              {s.note ? ` · ${s.note}` : ''}
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={on}
+            disabled={!s.optional}
+            onChange={(e) => toggleSection(s.id, e.target.checked)}
+          />
+        </label>
+
+        {on && s.kind === 'hymn' && (
+          <HymnPicker
+            sectionId={s.id}
+            sectionTitle={s.title}
+            season={day.season}
+            congregation={settings.congregation}
+            ownedBookIds={settings.ownedHymnBookIds}
+            readingRefs={readings.refs}
+            online={settings.useOnlineSources}
+            onlyBundledMidi={settings.onlyBundledMidi}
+            value={plan.hymns.find((h) => h.sectionId === s.id)}
+            onChange={(c) => setHymn(c, s.id)}
+          />
+        )}
+
+        {on && s.kind === 'prayers' && (
+          <IntercessionPicker
+            biddings={custom}
+            onChangeBiddings={(t) => setCustomText(s.id, t)}
+            selectedIds={selectedPrayerIds}
+            onTogglePrepared={togglePreparedPrayer}
+          />
+        )}
+
+        {on && s.kind === 'collect' && (
+          <div style={{ marginTop: 8 }}>
+            {(() => {
+              const c = getCollect(day, service.tradition);
+              return c?.collect ? (
+                <>
+                  <p className="spoken" style={{ fontSize: 15 }}>
+                    {c.collect}
+                  </p>
+                  <p className="verify-note">
+                    {c.source && <span>Source: {c.source}.</span>}{' '}
+                    {c.verified === false && (
+                      <span className="unverified">⚠ Hand-transcribed — check before use.</span>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <p className="subtle">Not catalogued offline.</p>
+              );
+            })()}
+            <a className="link" href={officialCollectUrl(day)} target="_blank" rel="noreferrer">
+              View the authorised collect →
+            </a>
+            <PasteTextBox
+              label="Paste the collect for offline use & read-aloud"
+              value={custom}
+              onChange={(t) => setCustomText(s.id, t)}
+            />
+          </div>
+        )}
+
+        {on && s.kind !== 'hymn' && s.kind !== 'prayers' && s.kind !== 'collect' && isPlaceholderText(s.text) && (
+          <PasteTextBox
+            label={`Paste the authorised text for “${s.title}”`}
+            value={custom}
+            onChange={(t) => setCustomText(s.id, t)}
+          />
+        )}
+        {on && s.kind !== 'hymn' && s.kind !== 'psalm' && s.kind !== 'reading' && (
+          <AlternativesPicker
+            groups={detectAlternativeGroups(custom)}
+            choices={plan.alternatives?.[s.id] ?? []}
+            onChoose={(gi, oi) => setAlternative(s.id, gi, oi)}
+          />
+        )}
+        {on && s.kind !== 'hymn' && <CwReferences refs={extractCwReferences(custom)} />}
+      </div>
+    );
+  };
+
+  // --- Psalms & Readings page: the day's readings, then each psalm/reading ---
+  const renderReadingsGroup = () => (
+    <div>
+      <h2>{GROUP_TITLES.readings}</h2>
+      <DayBanner day={day} />
+      <div className="card">
+        <h3>Readings for the day</h3>
+        <p className="subtle">
+          Bible version: {bible?.name} ({bible?.code}). Tap a reading to open it.
+        </p>
+        {readings.loading ? (
+          <p className="subtle">Looking up the lectionary…</p>
+        ) : (
+          <ul className="refs">
+            {readings.refs.map((ref, i) => (
+              <li key={i}>
+                <a className="link" href={bible?.url(ref)} target="_blank" rel="noreferrer">
+                  {ref.label ? `${ref.label}: ` : ''}
+                  {ref.book} {ref.passage}
+                </a>
+              </li>
+            ))}
+            {readings.refs.length === 0 && (
+              <li className="subtle">
+                Couldn’t look up readings (offline?) — use the official lectionary below.
+              </li>
+            )}
+          </ul>
+        )}
+        {readings.source === 'lectserve' && (
+          <p className="subtle" style={{ fontSize: 12 }}>
+            Readings via LectServe (Revised Common Lectionary) — verify against the official
+            lectionary for Second/Third Service variations.
+          </p>
+        )}
+        <a
+          className="link"
+          href={officialLectionaryUrl(day, service.timeOfDay, service.tradition === 'Book of Common Prayer')}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open the official lectionary for this date →
+        </a>
+      </div>
+      {groupSections('readings').map((s) => {
+        const on = sectionOn(s);
+        const custom = plan.customTexts?.[s.id] ?? '';
+        return (
+          <div key={s.id} className="card">
+            <label className="switch">
+              <span className="sw-text">
+                <span className="t">{s.title}</span>
+                <span className="d">{s.optional ? 'Optional' : 'Always included'}{s.note ? ` · ${s.note}` : ''}</span>
+              </span>
+              <input
+                type="checkbox"
+                className="toggle"
+                checked={on}
+                disabled={!s.optional}
+                onChange={(e) => toggleSection(s.id, e.target.checked)}
+              />
+            </label>
+            {on && !s.text && (
+              <PasteTextBox
+                label={`Paste the text of “${s.title}” for offline use & read-aloud`}
+                value={custom}
+                onChange={(t) => setCustomText(s.id, t)}
+              />
+            )}
+            {on && <CwReferences refs={extractCwReferences(custom)} />}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // --- The Reflection page: include toggle, then source picker + notes ---
+  const renderReflectionGroup = () => {
+    const sermon = service.sections.find((s) => s.kind === 'sermon');
+    if (!sermon) return null;
+    const on = sectionOn(sermon);
+    const sources = resolveAddressResources(settings.hiddenSourceIds, settings.customSources);
+    const chosen = plan.address.resourceId ? getAddressResource(plan.address.resourceId, sources) : undefined;
+    const pickOwn = () =>
+      update({
+        address: { ...plan.address, resourceId: null, itemTitle: undefined, itemUrl: undefined, itemAudioUrl: undefined },
+      });
+    const selectedKey = plan.address.itemAudioUrl ?? plan.address.itemUrl;
+    return (
+      <div>
+        <h2>{GROUP_TITLES.reflection}</h2>
+        <div className="card">
+          <label className="switch">
+            <span className="sw-text">
+              <span className="t">Include a reflection</span>
+              <span className="d">A short reflection or address (with the incumbent’s permission).</span>
+            </span>
+            <input
+              type="checkbox"
+              className="toggle"
+              checked={on}
+              onChange={(e) => toggleSection(sermon.id, e.target.checked)}
+            />
+          </label>
+        </div>
+        {!on ? (
+          <p className="subtle">Turn on “Include a reflection” to choose a resource and write your notes.</p>
+        ) : (
+          <>
+            <p className="subtle">
+              Pick a resource to draw on, or note your own outline. Filtered for a{' '}
+              {settings.congregation ?? 'general'} congregation.
+            </p>
+            <div className="card">
+              <label className="switch">
+                <span className="sw-text">
+                  <span className="t">I’ll prepare my own</span>
+                </span>
+                <input type="checkbox" className="toggle" checked={plan.address.resourceId === null} onChange={pickOwn} />
+              </label>
+            </div>
+
+            {chosen && !pickingSource ? (
+              <div className="card" style={{ borderColor: 'var(--primary)', borderWidth: 2 }}>
+                <div className="title-row">
+                  <strong>{chosen.title}</strong>
+                  <span className="role-badge">{chosen.kind}</span>
+                </div>
+                <div className="subtle">{chosen.author}</div>
+                {plan.address.itemTitle && (
+                  <p style={{ margin: '6px 0 0', fontSize: 14 }}>
+                    Chosen: <strong>“{plan.address.itemTitle}”</strong>
+                    {plan.address.itemUrl && (
+                      <>
+                        {' '}
+                        <a className="link" href={plan.address.itemUrl} target="_blank" rel="noreferrer">
+                          ↗
+                        </a>
+                      </>
+                    )}
+                  </p>
+                )}
+                {plan.address.itemAudioUrl && <RecordingPlayer url={plan.address.itemAudioUrl} />}
+                <div className="btn-row" style={{ marginTop: 8 }}>
+                  <button className="btn secondary small" onClick={() => setPickingSource(true)}>
+                    Choose a different source
+                  </button>
+                </div>
+              </div>
+            ) : (
+              suggestAddressResources(day.season, settings.congregation, sources).map((r) => (
+                <div
+                  key={r.id}
+                  className="card pressable"
+                  onClick={() => {
+                    update({
+                      address:
+                        plan.address.resourceId === r.id
+                          ? { ...plan.address }
+                          : { ...plan.address, resourceId: r.id, itemTitle: undefined, itemUrl: undefined, itemAudioUrl: undefined },
+                    });
+                    setPickingSource(false);
+                  }}
+                  style={{
+                    borderColor: plan.address.resourceId === r.id ? 'var(--primary)' : undefined,
+                    borderWidth: plan.address.resourceId === r.id ? 2 : 1,
+                  }}
+                >
+                  <div className="title-row">
+                    <strong>{r.title}</strong>
+                    <span className="role-badge">{r.kind}</span>
+                  </div>
+                  <div className="subtle">{r.author}</div>
+                  <p style={{ margin: '6px 0 8px', fontSize: 14 }}>{r.description}</p>
+                  <a className="link" href={r.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                    Open resource →
+                  </a>
+                  <FeedPreview
+                    resource={r}
+                    online={settings.useOnlineSources}
+                    selectedKey={plan.address.resourceId === r.id ? selectedKey : undefined}
+                    onSelectItem={(item) => {
+                      update({
+                        address: {
+                          ...plan.address,
+                          resourceId: r.id,
+                          itemTitle: item.title,
+                          itemUrl: item.link,
+                          itemAudioUrl: item.audioUrl,
+                          notes: item.content ?? plan.address.notes,
+                        },
+                      });
+                      setPickingSource(false);
+                    }}
+                  />
+                </div>
+              ))
+            )}
+
+            <div className="card">
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>Your notes / outline (optional)</label>
+                <textarea
+                  value={plan.address.notes ?? ''}
+                  onChange={(e) => update({ address: { ...plan.address, notes: e.target.value } })}
+                  placeholder="Key points, illustration, application…"
+                  rows={14}
+                  style={{ minHeight: 260, lineHeight: 1.5 }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderGroup = (id: string) => {
+    if (id === 'readings') return renderReadingsGroup();
+    if (id === 'reflection') return renderReflectionGroup();
+    return (
+      <div>
+        <h2>{GROUP_TITLES[id]}</h2>
+        {groupSections(id).map(renderSection)}
+      </div>
+    );
   };
 
   return (
     <div>
       <div className="steps">
-        {Array.from({ length: STEP_COUNT }).map((_, i) => (
+        {Array.from({ length: stepCount }).map((_, i) => (
           <div key={i} className={`dot ${i < step ? 'done' : i === step ? 'active' : ''}`} />
         ))}
       </div>
 
-      {/* Step 1 — service & date */}
-      {step === 0 && (
+      {/* Page 1 — service, date & whole-service paste */}
+      {stepKey === 'setup' && (
         <div>
-          <h2>Which service?</h2>
+          <h2>Which service &amp; when?</h2>
           <p className="subtle">Only offices a lay person may lead are listed.</p>
           {SERVICES.map((s) => (
             <div
               key={s.id}
               className="card pressable"
-              onClick={() =>
-                setPlan(defaultPlan(s.id, plan.dateIso))
-              }
+              onClick={() => setPlan(defaultPlan(s.id, plan.dateIso))}
               style={{
                 borderColor: s.id === plan.serviceId ? 'var(--primary)' : undefined,
                 borderWidth: s.id === plan.serviceId ? 2 : 1,
@@ -173,375 +525,55 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             />
           </div>
           <DayBanner day={day} />
-        </div>
-      )}
 
-      {/* Step 2 — optional parts */}
-      {step === 1 && (
-        <div>
-          <h2>Which parts will you include?</h2>
-          <p className="subtle">Turn optional sections on or off. Fixed parts are always shown.</p>
           {service.tradition === 'Common Worship' && (
-            <>
-              <p className="subtle">
-                Sections marked “text not bundled” show only a placeholder: the Common Worship
-                wording is © The Archbishops’ Council, so it isn’t shipped with the app. If your
-                parish holds the usual reproduction licence, paste the wording in and it will be
-                shown, printed and read aloud — even offline.
+            <div className="card" style={{ marginTop: 12 }}>
+              <h3>Paste the whole service</h3>
+              <p className="subtle" style={{ fontSize: 13 }}>
+                Common Worship wording is © The Archbishops’ Council, so it isn’t shipped with the
+                app. If your parish holds the usual reproduction licence, paste the day’s service
+                and it’s split across the following pages — shown, printed and read aloud offline.
               </p>
-              <details className="card" style={{ marginBottom: 12 }}>
-                <summary className="link" style={{ cursor: 'pointer' }}>
-                  ⚡ Paste the whole service at once
-                </summary>
-                <ol className="subtle" style={{ fontSize: 13, paddingLeft: 18, marginTop: 8 }}>
-                  <li>
-                    <a
-                      className="link"
-                      href={officialLectionaryUrl(
-                        day,
-                        service.timeOfDay,
-                        false,
-                      )}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open today’s {service.name} on the C of E site →
-                    </a>
-                  </li>
-                  <li>Tap its “Copy to clipboard” button (or select all the service text).</li>
-                  <li>Paste below and tap <strong>Distribute into sections</strong>.</li>
-                </ol>
-                <textarea
-                  value={wholePaste}
-                  onChange={(e) => setWholePaste(e.target.value)}
-                  rows={6}
-                  placeholder="Paste the whole Daily Prayer service here…"
-                  style={{
-                    width: '100%',
-                    marginTop: 6,
-                    padding: 10,
-                    fontFamily: 'inherit',
-                    fontSize: 14,
-                    boxSizing: 'border-box',
-                  }}
-                />
-                <div className="btn-row" style={{ marginTop: 8 }}>
-                  <button
-                    className="btn secondary small"
-                    onClick={distributeWholeService}
-                    disabled={!wholePaste.trim()}
-                  >
-                    Distribute into sections
-                  </button>
-                </div>
-                {parseSummary && (
-                  <p className="subtle" style={{ fontSize: 13, marginTop: 8 }}>
-                    {parseSummary}
-                  </p>
-                )}
-                <p className="subtle" style={{ fontSize: 12, marginTop: 6 }}>
-                  Stored only on this device (and in plans you share or back up). Please make sure
-                  your parish holds the right to reproduce the texts.
-                </p>
-              </details>
-            </>
-          )}
-          <div className="card">
-            {service.sections
-              // The Reflection slot is hidden unless enabled in Settings.
-              .filter((s) => s.kind !== 'sermon' || settings.allowReflection)
-              .map((s) => {
-              const on = s.optional ? (plan.includedSections[s.id] ?? false) : true;
-              return (
-                <div key={s.id}>
-                  <label className="switch">
-                    <span className="sw-text">
-                      <span className="t">{s.title}</span>
-                      <span className="d">
-                        {s.optional ? 'Optional' : 'Always included'}
-                        {isPlaceholderText(s.text) ? ' · text not bundled' : ''}
-                        {s.note ? ` · ${s.note}` : ''}
-                      </span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      className="toggle"
-                      checked={on}
-                      disabled={!s.optional}
-                      onChange={(e) => toggleSection(s.id, e.target.checked)}
-                    />
-                  </label>
-                  {on && isPlaceholderText(s.text) && (
-                    <PasteTextBox
-                      label={`Paste the authorised text for “${s.title}”`}
-                      value={plan.customTexts?.[s.id] ?? ''}
-                      onChange={(t) => setCustomText(s.id, t)}
-                    />
-                  )}
-                  {on && s.kind === 'prayers' && (
-                    <IntercessionPicker
-                      biddings={plan.customTexts?.[s.id] ?? ''}
-                      onChangeBiddings={(t) => setCustomText(s.id, t)}
-                      selectedIds={selectedPrayerIds}
-                      onTogglePrepared={togglePreparedPrayer}
-                    />
-                  )}
-                  {on && s.kind !== 'psalm' && s.kind !== 'reading' && (
-                    <AlternativesPicker
-                      groups={detectAlternativeGroups(plan.customTexts?.[s.id] ?? '')}
-                      choices={plan.alternatives?.[s.id] ?? []}
-                      onChoose={(gi, oi) => setAlternative(s.id, gi, oi)}
-                    />
-                  )}
-                  {on && <CwReferences refs={extractCwReferences(plan.customTexts?.[s.id] ?? '')} />}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Step 3 — readings & collect */}
-      {step === 2 && (
-        <div>
-          <h2>Readings &amp; Collect</h2>
-          <DayBanner day={day} />
-          <div className="card">
-            <h3>The Collect of the Day</h3>
-            {(() => {
-              const c = getCollect(day, service.tradition);
-              return c?.collect ? (
-                <>
-                  <p className="spoken" style={{ fontSize: 16 }}>
-                    {c.collect}
-                  </p>
-                  <p className="verify-note">
-                    {c.source && <span>Source: {c.source}.</span>}{' '}
-                    {c.verified === false && (
-                      <span className="unverified">
-                        ⚠ Hand-transcribed, not yet proofread — please check against the official
-                        text below before use.
-                      </span>
-                    )}
-                  </p>
-                </>
-              ) : (
-                <p className="subtle">Not catalogued offline.</p>
-              );
-            })()}
-            <a className="link" href={officialCollectUrl(day)} target="_blank" rel="noreferrer">
-              View the authorised collect →
-            </a>
-            {(() => {
-              const collectSection = service.sections.find((s) => s.kind === 'collect');
-              return collectSection && sectionOn(collectSection) ? (
-                <PasteTextBox
-                  label="Paste the collect for offline use & read-aloud"
-                  value={plan.customTexts?.[collectSection.id] ?? ''}
-                  onChange={(t) => setCustomText(collectSection.id, t)}
-                />
-              ) : null;
-            })()}
-          </div>
-          <div className="card">
-            <h3>Readings</h3>
-            <p className="subtle">
-              Bible version: {bible?.name} ({bible?.code}). Tap a reading to open it.
-            </p>
-            {readings.loading ? (
-              <p className="subtle">Looking up the lectionary…</p>
-            ) : (
-              <ul className="refs">
-                {readings.refs.map((ref, i) => (
-                  <li key={i}>
-                    <a className="link" href={bible?.url(ref)} target="_blank" rel="noreferrer">
-                      {ref.label ? `${ref.label}: ` : ''}
-                      {ref.book} {ref.passage}
-                    </a>
-                  </li>
-                ))}
-                {readings.refs.length === 0 && (
-                  <li className="subtle">
-                    Couldn’t look up readings (offline?) — use the official lectionary below.
-                  </li>
-                )}
-              </ul>
-            )}
-            {readings.source === 'lectserve' && (
-              <p className="subtle" style={{ fontSize: 12 }}>
-                Readings via LectServe (Revised Common Lectionary) — verify against the official
-                lectionary for Second/Third Service variations.
-              </p>
-            )}
-            <a
-              className="link"
-              href={officialLectionaryUrl(
-                day,
-                service.timeOfDay,
-                service.tradition === 'Book of Common Prayer',
-              )}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open the official lectionary for this date →
-            </a>
-            {service.sections
-              .filter((s) => (s.kind === 'reading' || s.kind === 'psalm') && !s.text && sectionOn(s))
-              .map((s) => (
-                <PasteTextBox
-                  key={s.id}
-                  label={`Paste the text of “${s.title}” for offline use & read-aloud`}
-                  value={plan.customTexts?.[s.id] ?? ''}
-                  onChange={(t) => setCustomText(s.id, t)}
-                />
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Step 4 — hymns */}
-      {step === 3 && (
-        <div>
-          <h2>Hymns</h2>
-          <p className="subtle">
-            Suggestions are drawn from your hymn books and suit {day.season}. Include as many or few
-            as you like.
-          </p>
-          {hymnSections.length === 0 && (
-            <p className="subtle">This service has no hymn slots enabled.</p>
-          )}
-          {hymnSections.map((s) => (
-            <HymnPicker
-              key={s.id}
-              sectionId={s.id}
-              sectionTitle={s.title}
-              season={day.season}
-              congregation={settings.congregation}
-              ownedBookIds={settings.ownedHymnBookIds}
-              readingRefs={readings.refs}
-              online={settings.useOnlineSources}
-              onlyBundledMidi={settings.onlyBundledMidi}
-              value={plan.hymns.find((h) => h.sectionId === s.id)}
-              onChange={(c) => setHymn(c, s.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Step 5 — address */}
-      {step === 4 && (
-        <div>
-          <h2>The Reflection</h2>
-          {!settings.allowReflection ? (
-            <div className="card">
-              <p className="subtle" style={{ margin: 0 }}>
-                The Reflection is turned off. In the Church of England a lay person may give a short
-                reflection or address only with the incumbent’s permission — turn it on under{' '}
-                <strong>Settings → The Reflection</strong> if you have that permission.
-              </p>
-            </div>
-          ) : (
-          <>
-          <p className="subtle">
-            Pick a resource to draw on, or note your own outline. Filtered for a{' '}
-            {settings.congregation ?? 'general'} congregation.
-          </p>
-          <div className="card">
-            <label className="switch">
-              <span className="sw-text">
-                <span className="t">I’ll prepare my own</span>
-              </span>
-              <input
-                type="checkbox"
-                className="toggle"
-                checked={plan.address.resourceId === null}
-                onChange={() =>
-                  update({
-                    address: {
-                      ...plan.address,
-                      resourceId: null,
-                      itemTitle: undefined,
-                      itemUrl: undefined,
-                    },
-                  })
-                }
-              />
-            </label>
-          </div>
-          {plan.address.itemTitle && (
-            <p className="subtle">
-              Chosen for the address: <strong>“{plan.address.itemTitle}”</strong>
-            </p>
-          )}
-          {suggestAddressResources(
-            day.season,
-            settings.congregation,
-            resolveAddressResources(settings.hiddenSourceIds, settings.customSources),
-          ).map((r) => (
-            <div
-              key={r.id}
-              className="card pressable"
-              onClick={() =>
-                update({
-                  address:
-                    plan.address.resourceId === r.id
-                      ? { ...plan.address }
-                      : // Switching resource drops a post picked from the old one.
-                        { ...plan.address, resourceId: r.id, itemTitle: undefined, itemUrl: undefined },
-                })
-              }
-              style={{
-                borderColor: plan.address.resourceId === r.id ? 'var(--primary)' : undefined,
-                borderWidth: plan.address.resourceId === r.id ? 2 : 1,
-              }}
-            >
-              <div className="title-row">
-                <strong>{r.title}</strong>
-                <span className="role-badge">{r.kind}</span>
-              </div>
-              <div className="subtle">{r.author}</div>
-              <p style={{ margin: '6px 0 8px', fontSize: 14 }}>{r.description}</p>
-              <a className="link" href={r.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                Open resource →
-              </a>
-              <FeedPreview
-                resource={r}
-                online={settings.useOnlineSources}
-                selectedUrl={plan.address.resourceId === r.id ? plan.address.itemUrl : undefined}
-                onSelectItem={(item) =>
-                  update({
-                    address: {
-                      ...plan.address,
-                      resourceId: r.id,
-                      itemTitle: item.title,
-                      itemUrl: item.link,
-                      itemAudioUrl: item.audioUrl,
-                      // Drop the post's text straight into the notes for editing
-                      // (when the feed gives us a body).
-                      notes: item.content ?? plan.address.notes,
-                    },
-                  })
-                }
-              />
-            </div>
-          ))}
-          <div className="card">
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Your notes / outline (optional)</label>
+              <ol className="subtle" style={{ fontSize: 13, paddingLeft: 18, marginTop: 8 }}>
+                <li>
+                  <a className="link" href={officialLectionaryUrl(day, service.timeOfDay, false)} target="_blank" rel="noreferrer">
+                    Open today’s {service.name} on the C of E site →
+                  </a>
+                </li>
+                <li>Tap its “Copy to clipboard” button (or select all the service text).</li>
+                <li>Paste below and tap <strong>Distribute into sections</strong>.</li>
+              </ol>
               <textarea
-                value={plan.address.notes ?? ''}
-                onChange={(e) => update({ address: { ...plan.address, notes: e.target.value } })}
-                placeholder="Key points, illustration, application…"
+                value={wholePaste}
+                onChange={(e) => setWholePaste(e.target.value)}
+                rows={6}
+                placeholder="Paste the whole Daily Prayer service here…"
+                style={{ width: '100%', marginTop: 6, padding: 10, fontFamily: 'inherit', fontSize: 14, boxSizing: 'border-box' }}
               />
+              <div className="btn-row" style={{ marginTop: 8 }}>
+                <button className="btn secondary small" onClick={distributeWholeService} disabled={!wholePaste.trim()}>
+                  Distribute into sections
+                </button>
+              </div>
+              {parseSummary && (
+                <p className="subtle" style={{ fontSize: 13, marginTop: 8 }}>
+                  {parseSummary}
+                </p>
+              )}
+              <p className="subtle" style={{ fontSize: 12, marginTop: 6 }}>
+                Stored only on this device (and in plans you share or back up). Please make sure your
+                parish holds the right to reproduce the texts.
+              </p>
             </div>
-          </div>
-          </>
           )}
         </div>
       )}
 
-      {/* Step 6 — review */}
-      {step === 5 && (
+      {/* A page per logical group of the service */}
+      {stepKey !== 'setup' && stepKey !== 'review' && renderGroup(stepKey)}
+
+      {/* Last page — review & begin */}
+      {stepKey === 'review' && (
         <div>
           <h2>Ready to lead</h2>
           <DayBanner day={day} />
@@ -566,8 +598,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                       : 'own reflection'}
                 </>
               )}{' '}
-              · about{' '}
-              <strong>{estMinutes} min</strong>
+              · about <strong>{estMinutes} min</strong>
             </div>
           </div>
           <p className="subtle">
@@ -591,7 +622,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             ‹ Back
           </button>
         )}
-        {step < STEP_COUNT - 1 && (
+        {step < stepCount - 1 && (
           <button className="btn" onClick={next}>
             Next ›
           </button>
