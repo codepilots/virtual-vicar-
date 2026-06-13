@@ -4,9 +4,11 @@ import {
   buildRunSteps,
   dayFromIso,
   estimateDuration,
+  isDailyOffice,
   overlayLectionary,
   type RunStep,
 } from '../lib/plan';
+import { getService } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
@@ -40,9 +42,11 @@ export function RunMode({ plan, settings, onExit }: Props) {
   // Fill reading/psalm slots from the online lectionary where the local table
   // had nothing; offline this is a no-op and the official-lectionary links stay.
   const lectionary = useDayReadings(plan.dateIso, settings.useOnlineSources);
+  // The Daily Office takes its readings from the pasted service, not the RCL.
+  const overlayRefs = isDailyOffice(getService(plan.serviceId)!) ? [] : lectionary.refs;
   const steps = useMemo(
-    () => overlayLectionary(baseSteps, lectionary.refs),
-    [baseSteps, lectionary.refs],
+    () => overlayLectionary(baseSteps, overlayRefs),
+    [baseSteps, overlayRefs],
   );
 
   // Estimated minutes still to come, from the current step onward.

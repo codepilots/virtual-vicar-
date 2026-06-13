@@ -12,7 +12,9 @@ import {
   dayFromIso,
   defaultPlan,
   estimateDuration,
+  isDailyOffice,
   overlayLectionary,
+  pastedReadingRefs,
   todayIso,
 } from '../lib/plan';
 import { saveSectionPrefs } from '../lib/storage';
@@ -118,14 +120,16 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   const [parseSummary, setParseSummary] = useState<string | null>(null);
   // Whether the reflection-source list is expanded for (re)picking.
   const [pickingSource, setPickingSource] = useState(false);
+  // Service list starts open for a fresh plan, collapsed when editing one.
+  const [serviceListOpen, setServiceListOpen] = useState(() => !initialPlan);
 
-  const distributeWholeService = () => {
+  const distributeWholeService = (): boolean => {
     const result = parseCommonWorshipService(wholePaste, service);
     if (result.filledIds.length === 0) {
       setParseSummary(
         "Couldn't find the section headings — paste the whole page (use its “Copy to clipboard” button).",
       );
-      return;
+      return false;
     }
     const customTexts = { ...plan.customTexts, ...result.texts };
     const includedSections = { ...plan.includedSections };
@@ -141,6 +145,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
       .filter(Boolean);
     setParseSummary(`Filled ${titles.length} section(s): ${titles.join(', ')}.`);
     setWholePaste('');
+    return true;
   };
 
   // Pages: setup, the groups present in this service, then review.
@@ -153,12 +158,19 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   const stepCount = steps.length;
   const stepKey = steps[Math.min(step, stepCount - 1)];
 
-  const next = () => setStep((s) => Math.min(stepCount - 1, s + 1));
+  const next = () => {
+    // Leaving the setup page, distribute any pasted whole service. If it can't
+    // be parsed, stay put and show why rather than advancing silently.
+    if (stepKey === 'setup' && wholePaste.trim() && !distributeWholeService()) return;
+    setStep((s) => Math.min(stepCount - 1, s + 1));
+  };
   const back = () => setStep((s) => Math.max(0, s - 1));
 
+  const dailyOffice = isDailyOffice(service);
+  const overlayRefs = dailyOffice ? [] : readings.refs;
   const estMinutes = useMemo(
-    () => estimateDuration(overlayLectionary(buildRunSteps(plan, settings), readings.refs)).totalMinutes,
-    [plan, settings, readings.refs],
+    () => estimateDuration(overlayLectionary(buildRunSteps(plan, settings), overlayRefs)).totalMinutes,
+    [plan, settings, overlayRefs],
   );
 
   // --- per-section configuration card (prep / canticles / prayers / hymns) ---
@@ -260,7 +272,12 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
   };
 
   // --- Psalms & Readings page: the day's readings, then each psalm/reading ---
-  const renderReadingsGroup = () => (
+  const renderReadingsGroup = () => {
+    // The Daily Office lectionary isn't fetched online; its readings come from
+    // the pasted service. Other services use the RCL from the online source.
+    const pasted = dailyOffice ? pastedReadingRefs(plan, service) : null;
+    const cardRefs = pasted ? [...pasted.psalms, ...pasted.readings] : readings.refs;
+    return (
     <div>
       <h2>{GROUP_TITLES.readings}</h2>
       <DayBanner day={day} />
@@ -269,11 +286,11 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
         <p className="subtle">
           Bible version: {bible?.name} ({bible?.code}). Tap a reading to open it.
         </p>
-        {readings.loading ? (
+        {!pasted && readings.loading ? (
           <p className="subtle">Looking up the lectionary…</p>
         ) : (
           <ul className="refs">
-            {readings.refs.map((ref, i) => (
+            {cardRefs.map((ref, i) => (
               <li key={i}>
                 <a className="link" href={bible?.url(ref)} target="_blank" rel="noreferrer">
                   {ref.label ? `${ref.label}: ` : ''}
@@ -281,18 +298,26 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                 </a>
               </li>
             ))}
-            {readings.refs.length === 0 && (
+            {cardRefs.length === 0 && (
               <li className="subtle">
-                Couldn’t look up readings (offline?) — use the official lectionary below.
+                {dailyOffice
+                  ? 'Paste the service on the first page to list the day’s readings (the Daily Office lectionary isn’t fetched online).'
+                  : 'Couldn’t look up readings (offline?) — use the official lectionary below.'}
               </li>
             )}
           </ul>
         )}
-        {readings.source === 'lectserve' && (
+        {dailyOffice ? (
           <p className="subtle" style={{ fontSize: 12 }}>
-            Readings via LectServe (Revised Common Lectionary) — verify against the official
-            lectionary for Second/Third Service variations.
+            The Daily Office lectionary — taken from the service you paste in, and on the C of E page.
           </p>
+        ) : (
+          readings.source === 'lectserve' && (
+            <p className="subtle" style={{ fontSize: 12 }}>
+              Readings via LectServe (Revised Common Lectionary) — verify against the official
+              lectionary for Second/Third Service variations.
+            </p>
+          )
         )}
         <a
           className="link"
@@ -333,7 +358,8 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
         );
       })}
     </div>
-  );
+    );
+  };
 
   // --- The Reflection page: include toggle, then source picker + notes ---
   const renderReflectionGroup = () => {
@@ -495,28 +521,11 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
         ))}
       </div>
 
-      {/* Page 1 — service, date & whole-service paste */}
+      {/* Page 1 — date, service & whole-service paste */}
       {stepKey === 'setup' && (
         <div>
-          <h2>Which service &amp; when?</h2>
-          <p className="subtle">Only offices a lay person may lead are listed.</p>
-          {SERVICES.map((s) => (
-            <div
-              key={s.id}
-              className="card pressable"
-              onClick={() => setPlan(defaultPlan(s.id, plan.dateIso))}
-              style={{
-                borderColor: s.id === plan.serviceId ? 'var(--primary)' : undefined,
-                borderWidth: s.id === plan.serviceId ? 2 : 1,
-              }}
-            >
-              <strong>{s.name}</strong>
-              <div className="subtle">
-                {s.tradition} · {s.summary}
-              </div>
-            </div>
-          ))}
-          <div className="field" style={{ marginTop: 12 }}>
+          <h2>Plan a service</h2>
+          <div className="field">
             <label>Date of the service</label>
             <input
               type="date"
@@ -525,6 +534,43 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
             />
           </div>
           <DayBanner day={day} />
+
+          {serviceListOpen ? (
+            <div style={{ marginTop: 12 }}>
+              <p className="subtle">Choose a service — only offices a lay person may lead are listed.</p>
+              {SERVICES.map((s) => (
+                <div
+                  key={s.id}
+                  className="card pressable"
+                  onClick={() => {
+                    if (s.id !== plan.serviceId) setPlan(defaultPlan(s.id, plan.dateIso));
+                    setServiceListOpen(false);
+                  }}
+                  style={{
+                    borderColor: s.id === plan.serviceId ? 'var(--primary)' : undefined,
+                    borderWidth: s.id === plan.serviceId ? 2 : 1,
+                  }}
+                >
+                  <strong>{s.name}</strong>
+                  <div className="subtle">
+                    {s.tradition} · {s.summary}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card" style={{ marginTop: 12, borderColor: 'var(--primary)', borderWidth: 2 }}>
+              <div className="title-row">
+                <div>
+                  <strong>{service.name}</strong>
+                  <div className="subtle">{service.tradition}</div>
+                </div>
+                <button className="btn secondary small" onClick={() => setServiceListOpen(true)}>
+                  Change service
+                </button>
+              </div>
+            </div>
+          )}
 
           {service.tradition === 'Common Worship' && (
             <div className="card" style={{ marginTop: 12 }}>
@@ -541,7 +587,7 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                   </a>
                 </li>
                 <li>Tap its “Copy to clipboard” button (or select all the service text).</li>
-                <li>Paste below and tap <strong>Distribute into sections</strong>.</li>
+                <li>Paste below — it’s split into the right sections when you tap <strong>Next</strong>.</li>
               </ol>
               <textarea
                 value={wholePaste}
@@ -550,11 +596,6 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                 placeholder="Paste the whole Daily Prayer service here…"
                 style={{ width: '100%', marginTop: 6, padding: 10, fontFamily: 'inherit', fontSize: 14, boxSizing: 'border-box' }}
               />
-              <div className="btn-row" style={{ marginTop: 8 }}>
-                <button className="btn secondary small" onClick={distributeWholeService} disabled={!wholePaste.trim()}>
-                  Distribute into sections
-                </button>
-              </div>
               {parseSummary && (
                 <p className="subtle" style={{ fontSize: 13, marginTop: 8 }}>
                   {parseSummary}

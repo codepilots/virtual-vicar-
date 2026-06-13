@@ -6,6 +6,8 @@ import { getAddressResource, resolveAddressResources } from '../data/addressReso
 import { getService, type ServiceSection } from '../data/services';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
+import { parseScriptureRef, labelRef } from './api/scriptureParse';
+import type { ServiceDefinition } from '../data/services';
 import { getPsalmText, GLORIA } from '../data/psalter';
 import { PREPARED_PRAYERS, type PreparedPrayer } from '../data/prayers';
 import { applyAlternativeChoices } from './alternatives';
@@ -19,6 +21,70 @@ function offlinePsalmText(refs: ScriptureRef[]): string | undefined {
     .filter((p): p is NonNullable<typeof p> => p !== null)
     .map((p) => `Psalm ${p.number}\n\n${p.text}\n\n${GLORIA}`);
   return parts.length ? parts.join('\n\n') : undefined;
+}
+
+/**
+ * True for the Common Worship Daily Office (Morning/Evening Prayer, Prayer
+ * During the Day, Night Prayer). These follow the CW *Daily Office* lectionary,
+ * which is different from the RCL (the Sunday Principal Service lectionary the
+ * online source returns) — so their readings come from the pasted service, not
+ * the online lectionary. (A Service of the Word, timeOfDay "any", keeps RCL.)
+ */
+export function isDailyOffice(service: ServiceDefinition): boolean {
+  return (
+    service.tradition === 'Common Worship' &&
+    (service.timeOfDay === 'morning' ||
+      service.timeOfDay === 'day' ||
+      service.timeOfDay === 'evening' ||
+      service.timeOfDay === 'night')
+  );
+}
+
+/** The psalm and (non-psalm) reading citations in one pasted section's text:
+ *  "Psalm N" headings, and short standalone citation lines such as
+ *  "Joshua 24.29-end" or "Luke 12.49-end". */
+export function refsInText(text: string): { psalms: ScriptureRef[]; readings: ScriptureRef[] } {
+  const psalms: ScriptureRef[] = [];
+  const readings: ScriptureRef[] = [];
+  const seen = new Set<string>();
+  const add = (list: ScriptureRef[], ref: ScriptureRef) => {
+    const key = `${ref.book} ${ref.passage}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    list.push(ref);
+  };
+  for (const m of text.matchAll(/\bPsalm\s+(\d+[\d.,\-–]*\d|\d)/gi)) {
+    add(psalms, { book: 'Psalm', passage: m[1], label: 'Psalm' });
+  }
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || line.length > 40) continue; // citations are short standalone lines
+    const ref = parseScriptureRef(line);
+    if (ref && ref.passage && ref.book !== 'Psalm') add(readings, labelRef(ref));
+  }
+  return { psalms, readings };
+}
+
+/** The day's Daily Office readings, aggregated across the pasted psalm & reading
+ *  sections — for the wizard's readings overview. */
+export function pastedReadingRefs(
+  plan: ServicePlan,
+  service: ServiceDefinition,
+): { psalms: ScriptureRef[]; readings: ScriptureRef[] } {
+  const psalms: ScriptureRef[] = [];
+  const readings: ScriptureRef[] = [];
+  const seen = new Set<string>();
+  for (const s of service.sections) {
+    if (s.kind !== 'psalm' && s.kind !== 'reading') continue;
+    const found = refsInText(plan.customTexts?.[s.id] ?? '');
+    for (const r of [...found.psalms, ...found.readings]) {
+      const key = `${r.book} ${r.passage}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      (r.label === 'Psalm' ? psalms : readings).push(r);
+    }
+  }
+  return { psalms, readings };
 }
 
 export function todayIso(): string {
@@ -123,7 +189,11 @@ export function buildRunSteps(plan: ServicePlan, settings: Settings): RunStep[] 
     service.tradition === 'Book of Common Prayer',
   );
 
-  // Distribute available readings across reading slots in order.
+  // Distribute available readings across reading slots in order. The Daily
+  // Office uses its own lectionary (not the RCL the online source gives), so
+  // each of its psalm/reading slots takes the citation from its own pasted
+  // text (below) rather than these RCL refs.
+  const dailyOffice = isDailyOffice(service);
   const refList = readings?.principal ?? [];
   const nonPsalmRefs = refList.filter((r) => r.label !== 'Psalm');
   const psalmRefs = refList.filter((r) => r.label === 'Psalm');
@@ -150,24 +220,27 @@ export function buildRunSteps(plan: ServicePlan, settings: Settings): RunStep[] 
 
     switch (s.kind) {
       case 'reading': {
-        const ref = nonPsalmRefs[readingIdx];
-        readingIdx += 1;
-        steps.push({
-          ...base,
-          kind: 'reading',
-          refs: ref ? [ref] : [],
-          fallbackUrl: lectionaryUrl,
-        });
+        let refs: ScriptureRef[];
+        if (dailyOffice) {
+          refs = refsInText(plan.customTexts?.[s.id] ?? '').readings;
+        } else {
+          const ref = nonPsalmRefs[readingIdx];
+          readingIdx += 1;
+          refs = ref ? [ref] : [];
+        }
+        steps.push({ ...base, kind: 'reading', refs, fallbackUrl: lectionaryUrl });
         break;
       }
       case 'psalm': {
         // Fixed canticles (Venite etc.) carry their own text; an appointed
         // psalm slot is filled from the bundled Coverdale Psalter when whole.
-        const psalter = s.text ? undefined : offlinePsalmText(psalmRefs);
+        // Daily Office psalms come from the pasted service, others from the RCL.
+        const refs = dailyOffice ? refsInText(plan.customTexts?.[s.id] ?? '').psalms : psalmRefs;
+        const psalter = s.text ? undefined : offlinePsalmText(refs);
         steps.push({
           ...base,
           kind: 'psalm',
-          refs: psalmRefs,
+          refs,
           text: s.text ?? psalter,
           attribution: s.text ? base.attribution : psalter ? 'Coverdale Psalter (BCP 1662)' : undefined,
           unverified: s.text ? s.unverified : psalter ? true : undefined,

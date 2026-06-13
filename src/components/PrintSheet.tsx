@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { ServicePlan, Settings } from '../lib/types';
-import { buildRunSteps, dayFromIso, overlayLectionary, estimateDuration } from '../lib/plan';
+import { buildRunSteps, dayFromIso, isDailyOffice, overlayLectionary, estimateDuration } from '../lib/plan';
 import { getService } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
@@ -26,8 +26,9 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
 
   const steps = useMemo(() => {
     const base = buildRunSteps(plan, settings);
-    return overlayLectionary(base, lectionary.refs);
-  }, [plan, settings, lectionary.refs]);
+    const refs = service && isDailyOffice(service) ? [] : lectionary.refs;
+    return overlayLectionary(base, refs);
+  }, [plan, settings, service, lectionary.refs]);
 
   const { totalMinutes } = useMemo(() => estimateDuration(steps), [steps]);
 
