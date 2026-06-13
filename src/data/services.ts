@@ -51,7 +51,7 @@ export interface ServiceDefinition {
   /** Confirmation that a lay person may lead this service. */
   layLed: true;
   /** Rough time of day the office is intended for. */
-  timeOfDay: 'morning' | 'evening' | 'night' | 'any';
+  timeOfDay: 'morning' | 'day' | 'evening' | 'night' | 'any';
   sections: ServiceSection[];
 }
 
@@ -78,25 +78,26 @@ const morningPrayer: ServiceDefinition = {
   summary: 'The daily office of Morning Prayer — may be led by a lay person.',
   layLed: true,
   timeOfDay: 'morning',
+  // The shape of Common Worship *Daily Prayer* Morning Prayer (the "Join us in
+  // daily prayer" pages the user pastes from). In that office the opening
+  // versicle, opening prayer, Gloria and opening canticle all sit *inside*
+  // "Preparation"; there is no separate Confession/Absolution/Creed (those
+  // belong to the fuller Sunday orders). Hymn slots are offered as optional
+  // extras for a lay-led service.
   sections: [
-    { id: 'preparation', title: 'Preparation', kind: 'said', role: 'officiant', optional: false, text: placeholder('Opening sentence & preparation') },
-    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true },
-    { id: 'confession', title: 'Confession', kind: 'said', role: 'all', optional: true, text: placeholder('Confession') },
-    { id: 'absolution', title: 'Absolution', kind: 'said', role: 'officiant', optional: true, note: 'A lay person uses the form “us/our”, not “you/your”.', text: placeholder('Absolution (form for lay leader)') },
-    { id: 'preces', title: 'Opening Versicles', kind: 'responsive', role: 'officiant', optional: false, text: placeholder('O Lord, open our lips…') },
-    { id: 'venite', title: 'Venite / Opening Canticle', kind: 'psalm', role: 'all', optional: true },
-    { id: 'psalmody', title: 'Psalmody', kind: 'psalm', role: 'all', optional: false, note: 'From the lectionary for the day.' },
+    { id: 'preparation', title: 'Preparation', kind: 'said', role: 'officiant', optional: false, text: placeholder('Opening versicle, opening prayer & canticle'), note: 'Includes “O Lord, open our lips”, the opening prayer and opening canticle.' },
+    { id: 'opening-hymn', title: 'Opening Hymn', kind: 'hymn', role: 'all', optional: true, note: 'A hymn may replace or follow the opening canticle.' },
+    { id: 'psalmody', title: 'Psalmody', kind: 'psalm', role: 'all', optional: false, note: 'The appointed psalm(s) for the day.' },
     { id: 'canticle', title: 'Canticle', kind: 'said', role: 'all', optional: true, text: placeholder('Canticle') },
     { id: 'first-reading', title: 'Scripture Reading', kind: 'reading', role: 'reader', optional: false },
     { id: 'second-reading', title: 'Second Reading', kind: 'reading', role: 'reader', optional: true },
+    { id: 'responsory', title: 'Responsory', kind: 'responsive', role: 'officiant', optional: true, text: placeholder('Responsory'), note: 'A suitable song, chant or responsory after the reading.' },
     { id: 'gospel-canticle', title: 'Gospel Canticle (Benedictus)', kind: 'said', role: 'all', optional: true, text: placeholder('Gospel Canticle') },
     { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, note: 'Optional reflection or address.' },
-    { id: 'creed', title: 'The Apostles’ Creed', kind: 'said', role: 'all', optional: true, text: placeholder('Apostles’ Creed') },
     { id: 'prayers', title: 'Prayers / Intercessions', kind: 'prayers', role: 'officiant', optional: false },
     { id: 'collect', title: 'The Collect of the Day', kind: 'collect', role: 'officiant', optional: false },
     { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: placeholder('The Lord’s Prayer') },
-    { id: 'mid-hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true },
-    { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding sentence & grace') },
+    { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding sentence & dismissal') },
     { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true },
   ],
 };
@@ -110,6 +111,30 @@ const eveningPrayer: ServiceDefinition = {
   sections: morningPrayer.sections.map((s) =>
     s.id === 'gospel-canticle' ? { ...s, title: 'Gospel Canticle (Magnificat)' } : s,
   ),
+};
+
+// Common Worship Prayer During the Day — a short midday office with its own
+// shape (Preparation, Praise, Psalmody, a Short Reading with a Response, then
+// Prayers). Its structure is the same on every weekday including Sunday; only
+// the appointed psalms, canticles and readings change (and those are pasted in).
+const prayerDuringDay: ServiceDefinition = {
+  id: 'prayer-during-day-cw',
+  name: 'Prayer During the Day',
+  tradition: 'Common Worship',
+  summary: 'A short midday office from Daily Prayer — may be led by a lay person.',
+  layLed: true,
+  timeOfDay: 'day',
+  sections: [
+    { id: 'preparation', title: 'Preparation', kind: 'said', role: 'officiant', optional: false, text: placeholder('Opening versicles & preparation') },
+    { id: 'praise', title: 'Praise', kind: 'said', role: 'all', optional: true, text: placeholder('A hymn, song or canticle of praise'), note: 'A hymn, song, canticle or extempore praise.' },
+    { id: 'psalmody', title: 'Psalmody', kind: 'psalm', role: 'all', optional: false, note: 'The appointed psalm(s) for the day.' },
+    { id: 'reading', title: 'Short Reading', kind: 'reading', role: 'reader', optional: false },
+    { id: 'response', title: 'Response', kind: 'said', role: 'all', optional: true, text: placeholder('Response to the reading'), note: 'Silence, study, song, or words from Scripture.' },
+    { id: 'prayers', title: 'Prayers / Intercessions', kind: 'prayers', role: 'officiant', optional: false },
+    { id: 'collect', title: 'The Collect', kind: 'collect', role: 'officiant', optional: false },
+    { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: placeholder('The Lord’s Prayer') },
+    { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding sentence') },
+  ],
 };
 
 const nightPrayer: ServiceDefinition = {
@@ -161,6 +186,7 @@ const serviceOfTheWord: ServiceDefinition = {
 
 export const SERVICES: ServiceDefinition[] = [
   morningPrayer,
+  prayerDuringDay,
   eveningPrayer,
   nightPrayer,
   serviceOfTheWord,

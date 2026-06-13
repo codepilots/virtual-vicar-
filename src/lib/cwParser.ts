@@ -17,20 +17,40 @@ interface Anchor {
   ids: string[];
 }
 
-// Order matters only for readability; matching is per-line.
+// Short standalone heading lines. Order matters only for readability; matching
+// is per-line. `ids` are tried in order against the sections this service
+// actually has, so the same anchor serves several offices (e.g. "Short
+// readings" in Prayer During the Day vs "Scripture Reading" in Morning/Evening
+// both feed a reading slot).
 const ANCHORS: Anchor[] = [
-  { test: /^preparation\b/i, ids: ['preparation'] },
-  { test: /^psalmody\b/i, ids: ['psalmody'] },
-  { test: /^canticle\b/i, ids: ['canticle'] },
+  // Single-word section titles: end-anchored so they match the standalone
+  // heading line and never a body line that merely starts with the word (e.g.
+  // "canticle, extempore praise or" within the Praise block).
+  { test: /^preparation$/i, ids: ['preparation'] },
+  { test: /^praise$/i, ids: ['praise'] },
+  { test: /^psalmody$/i, ids: ['psalmody'] },
+  { test: /^canticle$/i, ids: ['canticle'] },
   { test: /scripture\s+reading/i, ids: ['first-reading', 'reading'] },
+  { test: /^short\s+readings?$/i, ids: ['reading', 'first-reading'] },
   { test: /^(the\s+)?reading\b/i, ids: ['first-reading', 'reading'] },
   { test: /gospel\s+canticle/i, ids: ['gospel-canticle', 'nunc-dimittis'] },
-  { test: /^responsory\b/i, ids: ['responsory'] },
+  { test: /^responsory$/i, ids: ['responsory', 'response'] },
+  { test: /^response$/i, ids: ['response', 'responsory'] },
   { test: /^(the\s+)?prayers\b/i, ids: ['prayers'] },
   { test: /^intercessions\b/i, ids: ['prayers'] },
-  { test: /^the\s+collect\b/i, ids: ['collect'] },
+  // Prayer During the Day introduces the collect as "Or, the Collect …".
+  { test: /^(or,?\s+)?the\s+collect\b/i, ids: ['collect'] },
   { test: /lord.?s\s+prayer/i, ids: ['lords-prayer'] },
   { test: /^the\s+conclusion\b/i, ids: ['conclusion'] },
+];
+
+// Section starts that the page introduces only by a rubric (no short title of
+// their own), so they may run past the short-heading length limit. The
+// post-reading responsory in Morning/Evening Prayer is the main case:
+// "A suitable song or chant, or a responsory in this or another form, may
+// follow".
+const RUBRIC_ANCHORS: Anchor[] = [
+  { test: /\bsuitable\s+(song|hymn|chant)\b.*\bresponsory\b/i, ids: ['responsory'] },
 ];
 
 // A heading-only divider on the page that ends the previous block but starts
@@ -42,20 +62,43 @@ const FOOTER =
   /^(©|the\s+archbishops.{0,4}council|official\s+common\s+worship|the\s+bible\s+readings|implemented\s+by|implementation\s+copyright|view\s+other\s+services|copy\s+to\s+clipboard|share\s+this\s+page|was\s+this\s+page\s+helpful|prayer\s+for\s+the\s+day|sign\s+up\s+for\s+our\s+newsletter)/i;
 
 function isHeadingLine(line: string): Anchor | 'divider' | null {
-  // Headings are short standalone lines.
-  if (line.length === 0 || line.length > 48) return null;
+  if (line.length === 0) return null;
   if (DIVIDER.test(line)) return 'divider';
+  // Rubric-introduced section starts may be long, so test them before the
+  // short-heading length limit.
+  for (const a of RUBRIC_ANCHORS) {
+    if (a.test.test(line)) return a;
+  }
+  // Other headings are short standalone lines.
+  if (line.length > 48) return null;
   for (const a of ANCHORS) {
     if (a.test.test(line)) return a;
   }
   return null;
 }
 
-/** Tidy a captured block: split the glued "All" congregation marker off its
- *  response, separate a glued ".or" rubric, mend missing spaces after a
+/** Tidy a captured block: rejoin a standalone "All" congregation marker with
+ *  the response on the following line (the Prayer During the Day clipboard
+ *  format), split the glued "All" marker off its response (the Morning/Evening
+ *  format), separate a glued ".or" rubric, mend missing spaces after a
  *  semicolon/colon, and collapse blank runs. */
 function clean(lines: string[]): string {
-  return lines
+  // Merge a lone "All" marker into the next non-empty line, so the response is
+  // recognised and bolded ("All" / "O Lord, make haste…" -> "All O Lord, …").
+  const joined: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (/^All$/.test(lines[i].trim())) {
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim()) j++;
+      if (j < lines.length) {
+        joined.push(`All ${lines[j].trim()}`);
+        i = j;
+        continue;
+      }
+    }
+    joined.push(lines[i]);
+  }
+  return joined
     .map((l) => {
       let s = l;
       // "AllAmen.", "Allwho…", "Allfor…" -> "All …"; leave "Alleluia" intact.

@@ -16,6 +16,7 @@ import {
 } from '../lib/plan';
 import { saveSectionPrefs } from '../lib/storage';
 import { parseCommonWorshipService } from '../lib/cwParser';
+import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
 import { FeedPreview } from './FeedPreview';
@@ -62,6 +63,17 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
 
   const sectionOn = (s: (typeof service.sections)[number]) =>
     !s.optional || (plan.includedSections[s.id] ?? false);
+
+  // Which prepared intercession forms to include in run mode. Absent = offer
+  // all (matching run mode's fallback); selecting materialises an explicit set.
+  const selectedPrayerIds =
+    plan.intercessions?.preparedIds ?? PREPARED_PRAYERS.map((p) => p.id);
+  const togglePreparedPrayer = (id: string, on: boolean) => {
+    const next = on
+      ? [...selectedPrayerIds, id]
+      : selectedPrayerIds.filter((x) => x !== id);
+    update({ intercessions: { preparedIds: next } });
+  };
 
   // Whole-service paste: parse one block from the C of E Daily Prayer page and
   // distribute it into the matching sections.
@@ -251,6 +263,14 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                       label={`Paste the authorised text for “${s.title}”`}
                       value={plan.customTexts?.[s.id] ?? ''}
                       onChange={(t) => setCustomText(s.id, t)}
+                    />
+                  )}
+                  {on && s.kind === 'prayers' && (
+                    <IntercessionPicker
+                      biddings={plan.customTexts?.[s.id] ?? ''}
+                      onChangeBiddings={(t) => setCustomText(s.id, t)}
+                      selectedIds={selectedPrayerIds}
+                      onTogglePrepared={togglePreparedPrayer}
                     />
                   )}
                 </div>
@@ -529,6 +549,55 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Choose the intercessions ahead of time: note your own biddings (or paste the
+ * day's, which the whole-service paste also fills in here) and pick which
+ * prepared forms to have ready in run mode. Run mode then shows only these.
+ */
+function IntercessionPicker({
+  biddings,
+  onChangeBiddings,
+  selectedIds,
+  onTogglePrepared,
+}: {
+  biddings: string;
+  onChangeBiddings: (text: string) => void;
+  selectedIds: string[];
+  onTogglePrepared: (id: string, on: boolean) => void;
+}) {
+  return (
+    <div className="card" style={{ margin: '4px 0 10px', padding: 12 }}>
+      <div className="field" style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 14 }}>Your biddings / intercession outline</label>
+        <textarea
+          value={biddings}
+          onChange={(e) => onChangeBiddings(e.target.value)}
+          rows={4}
+          placeholder={`Leave blank for the classic shape:\n${INTERCESSION_PROMPTS.map((p) => `• ${p}`).join('\n')}`}
+          style={{ width: '100%', padding: 10, fontFamily: 'inherit', fontSize: 14, boxSizing: 'border-box' }}
+        />
+      </div>
+      <div className="subtle" style={{ fontSize: 13, marginBottom: 4 }}>
+        Prepared forms to have ready:
+      </div>
+      {PREPARED_PRAYERS.map((p) => (
+        <label key={p.id} className="switch" style={{ alignItems: 'flex-start' }}>
+          <span className="sw-text">
+            <span className="t">{p.title}</span>
+            {p.occasion && <span className="d">{p.occasion}</span>}
+          </span>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={selectedIds.includes(p.id)}
+            onChange={(e) => onTogglePrepared(p.id, e.target.checked)}
+          />
+        </label>
+      ))}
     </div>
   );
 }

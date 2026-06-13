@@ -82,13 +82,25 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
                   </p>
                 )}
               </>
+            ) : step.kind === 'prayers' ? (
+              <>
+                {step.text ? (
+                  <Liturgy className="sheet-text" text={step.text} />
+                ) : (
+                  <p className="sheet-text subtle">Intercessions.</p>
+                )}
+                {(step.prayers ?? []).map((p) => (
+                  <div key={p.id} style={{ marginTop: 8 }}>
+                    <p className="sheet-text" style={{ fontWeight: 600 }}>{p.title}</p>
+                    <Liturgy className="sheet-text" text={p.text} />
+                  </div>
+                ))}
+              </>
             ) : step.text ? (
               <>
                 <Liturgy className="sheet-text" text={step.text} />
                 {step.unverified && <span className="sheet-flag"> ⚠</span>}
               </>
-            ) : step.kind === 'prayers' ? (
-              <p className="sheet-text subtle">Intercessions.</p>
             ) : step.kind === 'sermon' ? (
               <>
                 <p className="sheet-text subtle">

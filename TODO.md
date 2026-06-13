@@ -38,8 +38,13 @@ ideas parked for later. (See `README.md` for what's already built.)
    box parses it into the right sections), paste per-section, or drop the
    texts permanently into `src/data/services.ts`. Otherwise the BCP services
    are fully usable today.
-   - [ ] Confirm the whole-service parser against a few dates/offices live
-         (it keys off the C of E page headings; structure has been stable).
+   - [x] ~~Whole-service parser handles Morning Prayer, Prayer During the Day
+         and Evening Prayer, on both Sundays and weekdays — verified against the
+         saved pastes in `local/`. Each office's section structure is constant
+         across weekdays (only the content differs), so one template per office
+         covers every day.~~
+   - [ ] Confirm the deep-linked C of E page URLs resolve live for each office
+         (esp. the new `prayer-during-the-day-…` slug).
 4. **Pick a deployment domain** if GitHub Pages isn't wanted (Netlify/Vercel
    also work; unset `VV_BASE` for a root domain).
 
@@ -50,9 +55,11 @@ ideas parked for later. (See `README.md` for what's already built.)
 - **Saints' days & festivals** — extend `calendar.ts` beyond Sundays and
   principal feasts (Michaelmas, patronal festivals, BVM, apostles…)
   with their collects and readings.
-- **Configurable intercessions** — choose prepared prayers in the wizard (not
-  just at run time); seasonal litany forms; local names list (sick/departed)
-  saved per parish.
+- **Configurable intercessions** — ~~choose prepared prayers in the wizard (not
+  just at run time)~~ done: the Prayers section in wizard step 2 now takes your
+  biddings/outline and which prepared forms to have ready; run mode and the
+  print sheet show only those. Still to do: seasonal litany forms; local names
+  list (sick/departed) saved per parish.
 - **Expand the Coverdale Psalter** to all 150 (and support verse-range
   display once the texts carry per-verse structure).
 - **Hymn catalogue at scale** — import a proper index (e.g. from Hymnary data

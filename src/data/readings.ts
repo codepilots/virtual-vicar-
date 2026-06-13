@@ -54,16 +54,25 @@ export const READINGS: Record<string, DayReadings> = {
  */
 export function officialLectionaryUrl(
   day: LiturgicalDay,
-  timeOfDay: 'morning' | 'evening' | 'night' | 'any' = 'any',
+  timeOfDay: 'morning' | 'day' | 'evening' | 'night' | 'any' = 'any',
   traditional = false,
 ): string {
   const office =
-    timeOfDay === 'evening' ? 'evening-prayer' : timeOfDay === 'night' ? 'night-prayer' : 'morning-prayer';
-  const style = traditional ? 'traditional' : 'contemporary';
+    timeOfDay === 'evening'
+      ? 'evening-prayer'
+      : timeOfDay === 'night'
+        ? 'night-prayer'
+        : timeOfDay === 'day'
+          ? 'prayer-during-the-day'
+          : 'morning-prayer';
+  // Only Morning and Evening Prayer have contemporary/traditional variants in
+  // the URL; Prayer During the Day and Night Prayer do not.
+  const hasStyle = timeOfDay === 'morning' || timeOfDay === 'evening' || timeOfDay === 'any';
+  const stylePart = hasStyle ? `${traditional ? 'traditional' : 'contemporary'}-` : '';
   const d = day.date;
   const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' }).toLowerCase();
   const month = d.toLocaleDateString('en-GB', { month: 'long' }).toLowerCase();
-  return `https://www.churchofengland.org/prayer-and-worship/join-us-in-daily-prayer/${office}-${style}-${weekday}-${d.getDate()}-${month}-${d.getFullYear()}`;
+  return `https://www.churchofengland.org/prayer-and-worship/join-us-in-daily-prayer/${office}-${stylePart}${weekday}-${d.getDate()}-${month}-${d.getFullYear()}`;
 }
 
 export function getReadings(day: LiturgicalDay): DayReadings | undefined {

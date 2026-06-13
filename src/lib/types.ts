@@ -67,6 +67,15 @@ export interface ServicePlan {
   customTexts?: Record<string, string>;
   hymns: HymnChoice[];
   address: AddressChoice;
+  /**
+   * Intercession choices for the Prayers slot, set in the wizard. When absent,
+   * run mode falls back to offering every prepared form (the original
+   * behaviour). `preparedIds` is the explicit set of prepared forms to include
+   * (an empty array means "none — I'll pray freely").
+   */
+  intercessions?: {
+    preparedIds: string[];
+  };
 }
 
 export const DEFAULT_SETTINGS: Settings = {

@@ -7,6 +7,7 @@ import { getService, type ServiceSection } from '../data/services';
 import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
 import { getPsalmText, GLORIA } from '../data/psalter';
+import { PREPARED_PRAYERS, type PreparedPrayer } from '../data/prayers';
 import { loadSectionPrefs } from './storage';
 import type { ServicePlan, Settings, HymnChoice } from './types';
 
@@ -90,6 +91,9 @@ export interface RunStep {
   fallbackUrl?: string;
   /** For hymn steps: the chosen hymn for this section. */
   hymn?: HymnChoice;
+  /** For prayers steps: the prepared forms the leader chose in the wizard
+   *  (undefined = offer all, as before). */
+  prayers?: PreparedPrayer[];
   /** For sermon steps: what the leader planned to draw on. */
   address?: {
     resourceTitle?: string;
@@ -201,9 +205,18 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
         });
         break;
       }
-      case 'prayers':
-        steps.push({ ...base, kind: 'prayers', text: s.text });
+      case 'prayers': {
+        const ids = plan.intercessions?.preparedIds;
+        steps.push({
+          ...base,
+          kind: 'prayers',
+          text: s.text,
+          // Explicit choice from the wizard; undefined keeps the old "offer
+          // every form" behaviour.
+          prayers: ids ? PREPARED_PRAYERS.filter((p) => ids.includes(p.id)) : undefined,
+        });
         break;
+      }
       case 'responsive':
         steps.push({ ...base, kind: 'responsive', text: s.text });
         break;

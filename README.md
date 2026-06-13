@@ -6,9 +6,10 @@ that a lay person may lawfully take — guiding them step by step, or taking the
 officiant's voice directly via text‑to‑speech.
 
 > **Scope & safeguard:** the app only offers offices a lay person may lead —
-> Morning Prayer, Evening Prayer, Night Prayer (Compline) and *A Service of the
-> Word*. It deliberately does **not** include Holy Communion / the Eucharist,
-> which requires a priest. Always follow your incumbent's guidance.
+> Morning Prayer, Prayer During the Day, Evening Prayer, Night Prayer (Compline)
+> and *A Service of the Word*. It deliberately does **not** include Holy
+> Communion / the Eucharist, which requires a priest. Always follow your
+> incumbent's guidance.
 
 ## What it does
 
@@ -123,7 +124,9 @@ src/
                        + Daily Office year, Proper numbers
     collects.ts        Collects by day id  (+ official link fallback)
     readings.ts        Lectionary refs by day id & year (+ official link fallback)
-    services.ts        The four lay-led offices as ordered, optional-flagged sections
+    services.ts        The lay-led CW offices (Morning Prayer, Prayer During the
+                       Day, Evening Prayer, Night Prayer, A Service of the Word)
+                       as ordered, optional-flagged sections
     bibleVersions.ts   Bible versions + passage URL builders
     hymns.ts           Hymn books, hymns, tunes, MIDI, season/congregation suggester
     addressResources.ts Blogs/podcasts for the address, filtered by congregation

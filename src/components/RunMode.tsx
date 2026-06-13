@@ -274,7 +274,7 @@ function StepBody({
         </div>
       );
     case 'prayers':
-      return <PrayersStep />;
+      return <PrayersStep step={step} />;
     default:
       return step.text ? (
         <>
@@ -288,25 +288,34 @@ function StepBody({
 }
 
 /**
- * The intercessions: a classic structure for praying freely, plus prepared
- * BCP forms that expand on demand so the screen stays manageable.
+ * The intercessions. Shows the biddings the leader prepared in the wizard (or
+ * the classic free-prayer shape if none), then the prepared forms they chose
+ * to include, expandable on demand so the screen stays manageable.
  */
-function PrayersStep() {
+function PrayersStep({ step }: { step: RunStep }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  // step.prayers is the wizard's explicit choice; undefined = offer them all.
+  const forms = step.prayers ?? PREPARED_PRAYERS;
   return (
     <div>
-      <div className="muted-box">
-        Pray in your own words — a classic shape:
-        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-          {INTERCESSION_PROMPTS.map((p, i) => (
-            <li key={i}>{p}</li>
-          ))}
-        </ul>
-      </div>
-      <p className="subtle" style={{ margin: '12px 0 6px' }}>
-        Or use a prepared form:
-      </p>
-      {PREPARED_PRAYERS.map((p) => (
+      {step.text ? (
+        <Liturgy className="spoken" text={step.text} />
+      ) : (
+        <div className="muted-box">
+          Pray in your own words — a classic shape:
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            {INTERCESSION_PROMPTS.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {forms.length > 0 && (
+        <p className="subtle" style={{ margin: '12px 0 6px' }}>
+          {step.text ? 'Prepared form(s):' : 'Or use a prepared form:'}
+        </p>
+      )}
+      {forms.map((p) => (
         <div key={p.id} className="card" style={{ padding: 12 }}>
           <div className="title-row">
             <div>
