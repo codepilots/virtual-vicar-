@@ -91,7 +91,15 @@ function nextUnitIsResponse(lines: string[], i: number): boolean {
 }
 
 export function classifyLiturgy(text: string): LiturgySegment[] {
-  const lines = text.split('\n');
+  // Normalise per line so stored/old/manually-pasted text renders correctly too
+  // (not only freshly-parsed text): peel a glued "or" alternative marker off the
+  // end of a response ("…Amen.or" -> "…Amen." + "or") and mend a missing space
+  // after a semicolon/colon.
+  const lines = text.split('\n').flatMap((raw) => {
+    const l = raw.replace(/([;:])(?=[A-Za-z])/g, '$1 ');
+    const m = l.trimEnd().match(/^(.*[.!?])\s*(or)$/i);
+    return m ? [m[1], m[2]] : [l];
+  });
   const segs: LiturgySegment[] = [];
   let response = false;
   let prevTerminal = true;
