@@ -11,6 +11,7 @@ import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
 import { loadMidiPlayer, tuneMidiUrl, listenUrl } from '../lib/midi';
+import { Liturgy, liturgyPlainText } from './Liturgy';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
@@ -82,7 +83,7 @@ export function RunMode({ plan, settings, onExit }: Props) {
       step.text && (step.role === 'officiant' || step.kind === 'collect' || step.kind === 'responsive');
     if (shouldSpeak && step.text) {
       setSpeaking(true);
-      speak(step.text, {
+      speak(liturgyPlainText(step.text), {
         voiceName: settings.ttsVoice,
         rate: settings.ttsRate,
         onEnd: () => setSpeaking(false),
@@ -104,7 +105,7 @@ export function RunMode({ plan, settings, onExit }: Props) {
       setSpeaking(false);
     } else if (step?.text) {
       setSpeaking(true);
-      speak(step.text, {
+      speak(liturgyPlainText(step.text), {
         voiceName: settings.ttsVoice,
         rate: settings.ttsRate,
         onEnd: () => setSpeaking(false),
@@ -195,7 +196,7 @@ function StepBody({
     case 'psalm':
       return (
         <div>
-          {step.text && <p className="spoken">{step.text}</p>}
+          {step.text && <Liturgy className="spoken" text={step.text} />}
           <SourceNote step={step} />
           <ul className="refs">
             {(step.refs ?? []).map((ref, i) => (
@@ -220,7 +221,7 @@ function StepBody({
       return (
         <div>
           {step.text ? (
-            <p className="spoken">{step.text}</p>
+            <Liturgy className="spoken" text={step.text} />
           ) : (
             <p className="subtle">Collect not catalogued offline.</p>
           )}
@@ -273,7 +274,7 @@ function StepBody({
     default:
       return step.text ? (
         <>
-          <p className="spoken">{step.text}</p>
+          <Liturgy className="spoken" text={step.text} />
           <SourceNote step={step} />
         </>
       ) : (

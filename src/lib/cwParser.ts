@@ -55,7 +55,11 @@ function isHeadingLine(line: string): Anchor | 'divider' | null {
  *  "All" congregation marker off the word it's glued to (e.g. "AllAmen."). */
 function clean(lines: string[]): string {
   const out = lines
-    .map((l) => l.replace(/^All(?=[A-Z‘“"])/, 'All '))
+    // Split the glued "All" congregation marker off its response. The response
+    // usually starts with a capital ("AllAmen.", "AllGlory…") but a versicle
+    // response continues in lower case ("Alland our mouth…", "Allas it was…");
+    // matching those few function words avoids breaking words like "Alleluia".
+    .map((l) => l.replace(/^All(?=[A-Z‘“"]|(?:and|as|but|or)\b)/, 'All '))
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();

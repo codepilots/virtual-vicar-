@@ -5,6 +5,7 @@ import { getService } from '../data/services';
 import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { useDayReadings } from '../lib/api/hooks';
+import { Liturgy } from './Liturgy';
 
 interface Props {
   plan: ServicePlan;
@@ -70,10 +71,10 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
                   {step.refs.map((r) => `${r.label ? `${r.label}: ` : ''}${r.book} ${r.passage}`).join('  ·  ')}
                 </p>
                 {step.text && (
-                  <p className="sheet-text">
-                    {step.text}
+                  <>
+                    <Liturgy className="sheet-text" text={step.text} />
                     {step.unverified && <span className="sheet-flag"> ⚠</span>}
-                  </p>
+                  </>
                 )}
                 {!step.text && bible && (
                   <p className="sheet-ref subtle">
@@ -82,10 +83,10 @@ export function PrintSheet({ plan, settings, onBack }: Props) {
                 )}
               </>
             ) : step.text ? (
-              <p className="sheet-text">
-                {step.text}
+              <>
+                <Liturgy className="sheet-text" text={step.text} />
                 {step.unverified && <span className="sheet-flag"> ⚠</span>}
-              </p>
+              </>
             ) : step.kind === 'prayers' ? (
               <p className="sheet-text subtle">Intercessions.</p>
             ) : step.kind === 'sermon' ? (

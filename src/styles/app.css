@@ -338,6 +338,18 @@ a.link {
   line-height: 1.6;
   white-space: pre-wrap;
 }
+/* Congregation ("All") responses, typeset as on the C of E pages: a small
+   "All" margin label with the response in bold; officiant text stays regular. */
+.vl-all {
+  font-weight: 700;
+}
+.vl-all-margin {
+  font-weight: 400;
+  font-size: 0.8em;
+  color: var(--muted);
+  margin-right: 0.45em;
+  vertical-align: baseline;
+}
 .run-progress {
   display: flex;
   align-items: center;
