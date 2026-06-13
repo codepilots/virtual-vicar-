@@ -51,19 +51,24 @@ function isHeadingLine(line: string): Anchor | 'divider' | null {
   return null;
 }
 
-/** Tidy a captured block: trim blank edges, collapse blank runs, and split the
- *  "All" congregation marker off the word it's glued to (e.g. "AllAmen."). */
+/** Tidy a captured block: split the glued "All" congregation marker off its
+ *  response, separate a glued ".or" rubric, mend missing spaces after a
+ *  semicolon/colon, and collapse blank runs. */
 function clean(lines: string[]): string {
-  const out = lines
-    // Split the glued "All" congregation marker off its response. The response
-    // usually starts with a capital ("AllAmen.", "AllGlory…") but a versicle
-    // response continues in lower case ("Alland our mouth…", "Allas it was…");
-    // matching those few function words avoids breaking words like "Alleluia".
-    .map((l) => l.replace(/^All(?=[A-Z‘“"]|(?:and|as|but|or)\b)/, 'All '))
+  return lines
+    .map((l) => {
+      let s = l;
+      // "AllAmen.", "Allwho…", "Allfor…" -> "All …"; leave "Alleluia" intact.
+      if (!/^Alleluia/i.test(s)) s = s.replace(/^All(?=[A-Za-z‘“"])/, 'All ');
+      // A glued "or" alternative-rubric after a response, e.g. "Amen.or".
+      s = s.replace(/([.!?])or$/i, '$1\nor');
+      // Missing space after ; or : that the CW source/clipboard drops.
+      s = s.replace(/([;:])(?=[A-Za-z])/g, '$1 ');
+      return s;
+    })
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  return out;
 }
 
 export interface CwParseResult {

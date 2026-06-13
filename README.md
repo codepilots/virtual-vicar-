@@ -76,10 +76,12 @@ These work entirely in the browser — no server, no API key:
   Psalmody, Canticle, Scripture Reading, Gospel Canticle, Prayers, the Collect,
   the Lord's Prayer, the Conclusion) into the matching sections, switching on
   any optional parts it fills. Per-section paste boxes remain for fine-tuning.
-  Pasted text is typeset like the original (`Liturgy.tsx`): congregation
-  responses (the "All" lines) are shown bold with a small "All" margin label,
-  officiant text stays regular, and the "All" markers are stripped for the
-  read-aloud voice.
+  Pasted text is typeset like the original (`Liturgy.tsx`): a line classifier
+  marks congregation responses (the "All" lines, shown bold with an "All"
+  margin label), officiant text (regular), directions/rubrics and scripture
+  citations (muted italic), psalm sub-headings and refrains. The read-aloud
+  voice speaks only the spoken parts — rubrics, citations, verse numbers and
+  the ♦ psalm-pointing marks are left out.
 - **Printable order of service** — `PrintSheet` assembles the whole plan into a
   clean document for the leader or printed pew sheets (`window.print()` → PDF).
 - **Run‑mode practicalities** — Screen Wake Lock keeps the phone awake while

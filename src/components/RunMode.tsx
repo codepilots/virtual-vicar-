@@ -11,7 +11,7 @@ import { getBibleVersion } from '../data/bibleVersions';
 import { getHymn } from '../data/hymns';
 import { speak, cancelSpeech } from '../lib/tts';
 import { loadMidiPlayer, tuneMidiUrl, listenUrl } from '../lib/midi';
-import { Liturgy, liturgyPlainText } from './Liturgy';
+import { Liturgy, liturgySpeech } from './Liturgy';
 import { useWakeLock } from '../lib/useWakeLock';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { useDayReadings, usePassageText } from '../lib/api/hooks';
@@ -74,13 +74,9 @@ export function RunMode({ plan, settings, onExit }: Props) {
         }
       : rawStep;
 
-  // Text for the read-aloud voice: strip "All" markers always, and verse
-  // numbers / pointing diamonds for psalms and readings.
-  const spokenTextFor = (s: RunStep): string =>
-    liturgyPlainText(s.text ?? '', {
-      stripPointing: s.kind === 'psalm',
-      stripVerseNumbers: s.kind === 'psalm' || s.kind === 'reading',
-    });
+  // Text for the read-aloud voice: only the spoken parts (rubrics, citations,
+  // verse numbers and pointing marks removed).
+  const spokenTextFor = (s: RunStep): string => liturgySpeech(s.text ?? '');
 
   // Auto-read officiant text when enabled and the step changes.
   useEffect(() => {
