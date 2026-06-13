@@ -339,16 +339,26 @@ a.link {
   white-space: pre-wrap;
 }
 /* Congregation ("All") responses, typeset as on the C of E pages: a small
-   "All" margin label with the response in bold; officiant text stays regular. */
+   "All" margin label hanging beside the response, which is bold and indented
+   so wrapped/continuation lines align under the text (a hanging indent). */
 .vl-all {
   font-weight: 700;
+}
+.vl-resp {
+  display: grid;
+  grid-template-columns: 1.9em 1fr;
+  column-gap: 0.4em;
+  margin: 0.15em 0;
 }
 .vl-all-margin {
   font-weight: 400;
   font-size: 0.8em;
   color: var(--muted);
-  margin-right: 0.45em;
-  vertical-align: baseline;
+  padding-top: 0.2em;
+}
+.vl-resp-line {
+  display: block;
+  font-weight: 700;
 }
 /* Directions/rubrics — shown but not read aloud. */
 .vl-rubric {
@@ -368,11 +378,18 @@ a.link {
   font-weight: 600;
   margin: 0.5em 0 0.2em;
 }
+/* Refrain: italic "Refrain" label hanging beside the (hanging-indented) text. */
+.vl-refrain {
+  display: grid;
+  grid-template-columns: 4.2em 1fr;
+  column-gap: 0.4em;
+  margin: 0.15em 0;
+}
 .vl-refrain-label {
   font-style: italic;
   color: var(--muted);
   font-size: 0.85em;
-  margin-right: 0.4em;
+  padding-top: 0.15em;
 }
 /* Blank-line spacer between paragraphs. */
 .vl-gap {

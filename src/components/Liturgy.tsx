@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 // Typeset Common Worship text pasted from the C of E "Copy to clipboard" output
 // the way the original page does, and tell the read-aloud voice what to skip.
 //
@@ -202,49 +204,66 @@ export function classifyLiturgy(text: string): LiturgySegment[] {
 
 export function Liturgy({ text, className }: { text: string; className?: string }) {
   const segs = classifyLiturgy(text);
-  return (
-    <div className={className}>
-      {segs.map((s, i) => {
-        if (s.role === 'normal' && s.text === '') return <div key={i} className="vl-gap" />;
-        if (s.role === 'rubric') return <div key={i} className="vl-rubric">{s.text}</div>;
-        if (s.role === 'crossref') return <div key={i} className="vl-crossref">{s.text}</div>;
-        if (s.role === 'heading') return <div key={i} className="vl-subheading">{s.text}</div>;
-        if (s.role === 'refrain') {
-          return (
-            <div key={i}>
-              <span className="vl-refrain-label">Refrain</span>
-              {s.text ? <span> {s.text}</span> : null}
-            </div>
-          );
-        }
-        if (s.role === 'response') {
-          return (
-            <div key={i}>
-              {s.allMarker && <span className="vl-all-margin">All</span>}
-              {s.text && <strong className="vl-all">{s.text}</strong>}
-            </div>
-          );
-        }
-        if (s.role === 'verse') {
-          const parts = s.parts ?? [s.text];
-          return (
-            <div key={i} className="vl-verse">
-              <span className="vl-verse-num">{s.number}</span>
-              <span className="vl-verse-body">
-                {parts.map((p, k) => (
-                  <span className="vl-halfverse" key={k}>
-                    {renderHalfVerse(p)}
-                    {k < parts.length - 1 && <span className="vl-point"> ♦</span>}
-                  </span>
-                ))}
+  const out: ReactNode[] = [];
+
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i];
+
+    // A congregation response: gather the marker line and its continuation
+    // lines into one block with the "All" label hanging in the margin.
+    if (s.role === 'response') {
+      const body = [s.text];
+      let j = i + 1;
+      while (j < segs.length && segs[j].role === 'response' && !segs[j].allMarker) {
+        body.push(segs[j].text);
+        j++;
+      }
+      out.push(
+        <div className="vl-resp" key={i}>
+          <span className="vl-all-margin">{s.allMarker ? 'All' : ''}</span>
+          <span className="vl-resp-body">
+            {body.map((b, k) => (
+              <strong className="vl-resp-line" key={k}>
+                {b}
+              </strong>
+            ))}
+          </span>
+        </div>,
+      );
+      i = j - 1;
+      continue;
+    }
+
+    if (s.role === 'normal' && s.text === '') out.push(<div key={i} className="vl-gap" />);
+    else if (s.role === 'rubric') out.push(<div key={i} className="vl-rubric">{s.text}</div>);
+    else if (s.role === 'crossref') out.push(<div key={i} className="vl-crossref">{s.text}</div>);
+    else if (s.role === 'heading') out.push(<div key={i} className="vl-subheading">{s.text}</div>);
+    else if (s.role === 'refrain') {
+      out.push(
+        <div className="vl-refrain" key={i}>
+          <span className="vl-refrain-label">Refrain</span>
+          <span className="vl-refrain-body">{s.text}</span>
+        </div>,
+      );
+    } else if (s.role === 'verse') {
+      const parts = s.parts ?? [s.text];
+      out.push(
+        <div key={i} className="vl-verse">
+          <span className="vl-verse-num">{s.number}</span>
+          <span className="vl-verse-body">
+            {parts.map((p, k) => (
+              <span className="vl-halfverse" key={k}>
+                {renderHalfVerse(p)}
+                {k < parts.length - 1 && <span className="vl-point"> ♦</span>}
               </span>
-            </div>
-          );
-        }
-        return <div key={i}>{s.text}</div>;
-      })}
-    </div>
-  );
+            ))}
+          </span>
+        </div>,
+      );
+    } else out.push(<div key={i}>{s.text}</div>);
+  }
+
+  return <div className={className}>{out}</div>;
 }
 
 /** Display a half-verse, peeling a trailing "R" refrain cue into a marker. */
