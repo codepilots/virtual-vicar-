@@ -75,8 +75,15 @@ export function RunMode({ plan, settings, onExit }: Props) {
       : rawStep;
 
   // Text for the read-aloud voice: only the spoken parts (rubrics, citations,
-  // verse numbers and pointing marks removed).
-  const spokenTextFor = (s: RunStep): string => liturgySpeech(s.text ?? '');
+  // verse numbers and pointing marks removed). On the intercessions step the
+  // biddings are prompts for free prayer (topic lists, page references) rather
+  // than words to read, so the voice says only the chosen prepared prayer(s).
+  const spokenTextFor = (s: RunStep): string => {
+    if (s.kind === 'prayers') return liturgySpeech((s.prayers ?? []).map((p) => p.text).join('\n'));
+    return liturgySpeech(s.text ?? '');
+  };
+
+  const spokenText = step ? spokenTextFor(step) : '';
 
   // Auto-read officiant text when enabled and the step changes.
   useEffect(() => {
@@ -84,10 +91,10 @@ export function RunMode({ plan, settings, onExit }: Props) {
     setSpeaking(false);
     if (!step || !settings.ttsEnabled) return;
     const shouldSpeak =
-      step.text && (step.role === 'officiant' || step.kind === 'collect' || step.kind === 'responsive');
-    if (shouldSpeak && step.text) {
+      spokenText && (step.role === 'officiant' || step.kind === 'collect' || step.kind === 'responsive');
+    if (shouldSpeak) {
       setSpeaking(true);
-      speak(spokenTextFor(step), {
+      speak(spokenText, {
         voiceName: settings.ttsVoice,
         rate: settings.ttsRate,
         onEnd: () => setSpeaking(false),
@@ -107,9 +114,9 @@ export function RunMode({ plan, settings, onExit }: Props) {
     if (speaking) {
       cancelSpeech();
       setSpeaking(false);
-    } else if (step?.text) {
+    } else if (spokenText) {
       setSpeaking(true);
-      speak(spokenTextFor(step), {
+      speak(spokenText, {
         voiceName: settings.ttsVoice,
         rate: settings.ttsRate,
         onEnd: () => setSpeaking(false),
@@ -171,7 +178,7 @@ export function RunMode({ plan, settings, onExit }: Props) {
         <button className="btn ghost small" onClick={() => go(-1)} disabled={index === 0}>
           ‹ Prev
         </button>
-        {settings.ttsEnabled && step.text && (
+        {settings.ttsEnabled && spokenText && (
           <button className="btn secondary small" onClick={toggleSpeak}>
             {speaking ? '◼ Stop' : '🔊 Read'}
           </button>

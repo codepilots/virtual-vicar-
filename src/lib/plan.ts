@@ -8,6 +8,7 @@ import { getCollect, officialCollectUrl } from '../data/collects';
 import { getReadings, officialLectionaryUrl, type ScriptureRef } from '../data/readings';
 import { getPsalmText, GLORIA } from '../data/psalter';
 import { PREPARED_PRAYERS, type PreparedPrayer } from '../data/prayers';
+import { applyAlternativeChoices } from './alternatives';
 import { loadSectionPrefs } from './storage';
 import type { ServicePlan, Settings, HymnChoice } from './types';
 
@@ -231,8 +232,14 @@ export function buildRunSteps(plan: ServicePlan, _settings: Settings): RunStep[]
 
     // Text the user pasted from an official source replaces whatever the
     // section had (placeholder, link-out or nothing) — so it displays,
-    // prints and reads aloud offline.
-    const custom = plan.customTexts?.[s.id]?.trim();
+    // prints and reads aloud offline. Any "or" alternatives the user resolved
+    // in the wizard are narrowed to the chosen option here (psalm/reading slots
+    // are left whole — their choices are lectionary-driven, not "or" forms).
+    const pasted = plan.customTexts?.[s.id]?.trim();
+    const custom =
+      pasted && s.kind !== 'psalm' && s.kind !== 'reading'
+        ? applyAlternativeChoices(pasted, plan.alternatives?.[s.id])
+        : pasted;
     const last = steps[steps.length - 1];
     if (custom && last?.sectionId === s.id) {
       steps[steps.length - 1] = {

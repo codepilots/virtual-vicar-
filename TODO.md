@@ -45,6 +45,22 @@ ideas parked for later. (See `README.md` for what's already built.)
          covers every day.~~
    - [ ] Confirm the deep-linked C of E page URLs resolve live for each office
          (esp. the new `prayer-during-the-day-…` slug).
+   - [x] ~~Typesetting of pasted text reworked: clipboard soft-wraps are
+         rejoined, rubrics/attributions/alternative markers no longer render as
+         bold responses, mid-line "Refrain:" is split out, and a psalm-collect
+         the clipboard runs straight on from the last verse (the glued
+         "…God.Come, creator Spirit…", with no verse number) is split off as
+         following prose.~~
+   - [x] ~~"or" alternatives in a pasted section (Lord's Prayer
+         contemporary/traditional, opening-prayer forms, hymn/canticle) can be
+         pre-chosen in wizard step 2; run mode/print then show only the picked
+         form (default keeps all). Psalm/reading slots are left alone.~~
+   - [x] ~~Cross-references in the paste ("(page 108)", "pages 362–371", and
+         "(link is external)" web links) are stripped from the rendered text and
+         surfaced per-section in the wizard as Common Worship lookups, keyed off
+         the page number (the reliable anchor). Limit: the clipboard text has no
+         original URLs (HTML-only), so the links are a CW search, not a deep
+         link — would need clipboard-HTML capture for exact targets.~~
 4. **Pick a deployment domain** if GitHub Pages isn't wanted (Netlify/Vercel
    also work; unset `VV_BASE` for a root domain).
 

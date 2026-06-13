@@ -81,17 +81,21 @@ function isHeadingLine(line: string): Anchor | 'divider' | null {
  *  the response on the following line (the Prayer During the Day clipboard
  *  format), split the glued "All" marker off its response (the Morning/Evening
  *  format), separate a glued ".or" rubric, mend missing spaces after a
- *  semicolon/colon, and collapse blank runs. */
+ *  semicolon/colon, and collapse blank runs.
+ *
+ *  The congregation marker is written as "All:" (with a colon) so it can be
+ *  told apart from the ordinary word "All" (e.g. "All the earth…"), which the
+ *  clipboard leaves spaced. The renderer drops the colon. */
 function clean(lines: string[]): string {
   // Merge a lone "All" marker into the next non-empty line, so the response is
-  // recognised and bolded ("All" / "O Lord, make haste…" -> "All O Lord, …").
+  // recognised and bolded ("All" / "O Lord, make haste…" -> "All: O Lord, …").
   const joined: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     if (/^All$/.test(lines[i].trim())) {
       let j = i + 1;
       while (j < lines.length && !lines[j].trim()) j++;
       if (j < lines.length) {
-        joined.push(`All ${lines[j].trim()}`);
+        joined.push(`All: ${lines[j].trim()}`);
         i = j;
         continue;
       }
@@ -101,8 +105,9 @@ function clean(lines: string[]): string {
   return joined
     .map((l) => {
       let s = l;
-      // "AllAmen.", "Allwho…", "Allfor…" -> "All …"; leave "Alleluia" intact.
-      if (!/^Alleluia/i.test(s)) s = s.replace(/^All(?=[A-Za-z‘“"])/, 'All ');
+      // Glued marker "AllAmen.", "Allwho…" -> "All: …" (colon distinguishes the
+      // marker from the word "All"); leave "Alleluia" intact.
+      if (!/^Alleluia/i.test(s)) s = s.replace(/^All(?=[A-Za-z‘“"])/, 'All: ');
       // A glued "or" alternative-rubric after a response, e.g. "Amen.or".
       s = s.replace(/([.!?])or$/i, '$1\nor');
       // Missing space after ; or : that the CW source/clipboard drops.

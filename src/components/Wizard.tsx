@@ -16,6 +16,8 @@ import {
 } from '../lib/plan';
 import { saveSectionPrefs } from '../lib/storage';
 import { parseCommonWorshipService } from '../lib/cwParser';
+import { detectAlternativeGroups, type AltGroup } from '../lib/alternatives';
+import { extractCwReferences, type CwReference } from '../lib/cwReferences';
 import { INTERCESSION_PROMPTS, PREPARED_PRAYERS } from '../data/prayers';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
@@ -73,6 +75,14 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
       ? [...selectedPrayerIds, id]
       : selectedPrayerIds.filter((x) => x !== id);
     update({ intercessions: { preparedIds: next } });
+  };
+
+  // Record which "or" alternative the leader prefers for a section's group.
+  const setAlternative = (sectionId: string, groupIndex: number, optionIndex: number) => {
+    const current = [...(plan.alternatives?.[sectionId] ?? [])];
+    while (current.length <= groupIndex) current.push(-1);
+    current[groupIndex] = optionIndex;
+    update({ alternatives: { ...plan.alternatives, [sectionId]: current } });
   };
 
   // Whole-service paste: parse one block from the C of E Daily Prayer page and
@@ -273,6 +283,14 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
                       onTogglePrepared={togglePreparedPrayer}
                     />
                   )}
+                  {on && s.kind !== 'psalm' && s.kind !== 'reading' && (
+                    <AlternativesPicker
+                      groups={detectAlternativeGroups(plan.customTexts?.[s.id] ?? '')}
+                      choices={plan.alternatives?.[s.id] ?? []}
+                      onChoose={(gi, oi) => setAlternative(s.id, gi, oi)}
+                    />
+                  )}
+                  {on && <CwReferences refs={extractCwReferences(plan.customTexts?.[s.id] ?? '')} />}
                 </div>
               );
             })}
@@ -598,6 +616,76 @@ function IntercessionPicker({
           />
         </label>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Other Common Worship resources this section points to (the Acclamation, a
+ * canticle, the prayer cycles). The copied text keeps the page number but not
+ * the original URL, so each is shown with its Daily Prayer page and a lookup.
+ */
+function CwReferences({ refs }: { refs: CwReference[] }) {
+  if (refs.length === 0) return null;
+  return (
+    <div className="subtle" style={{ margin: '2px 0 10px', fontSize: 13 }}>
+      <div style={{ marginBottom: 2 }}>Also referenced (Common Worship: Daily Prayer):</div>
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {refs.map((r, i) => (
+          <li key={i} style={{ marginBottom: 2 }}>
+            <a className="link" href={r.url} target="_blank" rel="noreferrer">
+              {r.label} ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Where a pasted section offers "or" alternatives (two forms of the Lord's
+ * Prayer, a choice of opening prayer, a hymn or canticle…), let the leader pick
+ * the one they'll use. Run mode and the print sheet then show only that; the
+ * default keeps them all to decide on the day.
+ */
+function AlternativesPicker({
+  groups,
+  choices,
+  onChoose,
+}: {
+  groups: AltGroup[];
+  choices: number[];
+  onChoose: (groupIndex: number, optionIndex: number) => void;
+}) {
+  if (groups.length === 0) return null;
+  return (
+    <div className="card" style={{ margin: '4px 0 10px', padding: 12 }}>
+      <div className="subtle" style={{ fontSize: 13, marginBottom: 6 }}>
+        This part offers {groups.length === 1 ? 'a choice' : `${groups.length} choices`} — pick what you’ll use:
+      </div>
+      {groups.map((g, gi) => {
+        const chosen = choices[gi] ?? -1;
+        return (
+          <div key={gi} style={{ marginBottom: gi < groups.length - 1 ? 10 : 0 }}>
+            {groups.length > 1 && (
+              <div className="subtle" style={{ fontSize: 12, marginBottom: 2 }}>
+                Choice {gi + 1}
+              </div>
+            )}
+            <label className="alt-opt" style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0' }}>
+              <input type="radio" checked={chosen < 0} onChange={() => onChoose(gi, -1)} />
+              <span>Show all (decide on the day)</span>
+            </label>
+            {g.options.map((o, oi) => (
+              <label key={oi} className="alt-opt" style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0' }}>
+                <input type="radio" checked={chosen === oi} onChange={() => onChoose(gi, oi)} />
+                <span>“{o.label}”</span>
+              </label>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

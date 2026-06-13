@@ -76,6 +76,12 @@ export interface ServicePlan {
   intercessions?: {
     preparedIds: string[];
   };
+  /**
+   * For sections whose pasted text offers "or" alternatives, the chosen option
+   * per group: `alternatives[sectionId][groupIndex]` is the option index, or
+   * < 0 / missing to keep all of that group (decide on the day).
+   */
+  alternatives?: Record<string, number[]>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
