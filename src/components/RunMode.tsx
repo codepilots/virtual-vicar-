@@ -74,6 +74,14 @@ export function RunMode({ plan, settings, onExit }: Props) {
         }
       : rawStep;
 
+  // Text for the read-aloud voice: strip "All" markers always, and verse
+  // numbers / pointing diamonds for psalms and readings.
+  const spokenTextFor = (s: RunStep): string =>
+    liturgyPlainText(s.text ?? '', {
+      stripPointing: s.kind === 'psalm',
+      stripVerseNumbers: s.kind === 'psalm' || s.kind === 'reading',
+    });
+
   // Auto-read officiant text when enabled and the step changes.
   useEffect(() => {
     cancelSpeech();
@@ -83,7 +91,7 @@ export function RunMode({ plan, settings, onExit }: Props) {
       step.text && (step.role === 'officiant' || step.kind === 'collect' || step.kind === 'responsive');
     if (shouldSpeak && step.text) {
       setSpeaking(true);
-      speak(liturgyPlainText(step.text), {
+      speak(spokenTextFor(step), {
         voiceName: settings.ttsVoice,
         rate: settings.ttsRate,
         onEnd: () => setSpeaking(false),
@@ -105,7 +113,7 @@ export function RunMode({ plan, settings, onExit }: Props) {
       setSpeaking(false);
     } else if (step?.text) {
       setSpeaking(true);
-      speak(liturgyPlainText(step.text), {
+      speak(spokenTextFor(step), {
         voiceName: settings.ttsVoice,
         rate: settings.ttsRate,
         onEnd: () => setSpeaking(false),

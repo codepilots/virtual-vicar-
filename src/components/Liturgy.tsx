@@ -53,7 +53,28 @@ export function Liturgy({ text, className }: { text: string; className?: string 
   return <div className={className}>{nodes}</div>;
 }
 
-/** Strip the "All" congregation markers so TTS reads only the spoken words. */
-export function liturgyPlainText(text: string): string {
-  return text.replace(/^All[ \t]+/gm, '').replace(/^All$/gm, '').trim();
+/**
+ * Plain text for the read-aloud voice. Always strips the "All" congregation
+ * markers (a visual label, not spoken). For psalmody/readings, optionally also
+ * strips verse numbers (glued to the line, e.g. "1O come") and the CW pointing
+ * diamond ♦ (a breath mark, not a word) so the voice reads only the words.
+ */
+export function liturgyPlainText(
+  text: string,
+  opts?: { stripVerseNumbers?: boolean; stripPointing?: boolean },
+): string {
+  let t = text.replace(/^All[ \t]+/gm, '').replace(/^All$/gm, '');
+  if (opts?.stripPointing) {
+    // CW pointing/breath marks: ♦ (U+2666) and the metrical bullet/asterisk.
+    t = t.replace(/[♦◆◇•]/g, ' ');
+  }
+  if (opts?.stripVerseNumbers) {
+    // Leading verse number on each line ("1O come", "27 Joshua said…").
+    t = t.replace(/^\s*\d+\s*/gm, '');
+  }
+  return t
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
