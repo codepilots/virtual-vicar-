@@ -45,8 +45,9 @@ const SUBHEADING = /^(psalm|canticle)\s+\d/i;
 // A standalone scripture citation line, e.g. "Jeremiah 14.9", "Luke 2.29-32".
 const CROSSREF = /^(?:[1-3]\s)?[A-Z][a-zA-Z]+\s+\d+[.:]\d+(?:[-–]\d+)?$/;
 const REFRAIN = /^refrain:/i;
-// Line ends a sentence (allowing a trailing quote/bracket).
-const TERMINAL = /[.!?][)”’"']*$/;
+// Line ends a sentence (allowing trailing quotes and closing brackets, e.g.
+// the optional "… in the breaking of the bread.]").
+const TERMINAL = /[.!?][)\]}”’"']*$/;
 
 /** Separate a glued "All" congregation marker from its response ("AllAmen." ->
  *  "All Amen.", "Allwho" -> "All who"), without breaking the word "Alleluia". */
