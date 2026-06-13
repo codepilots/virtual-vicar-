@@ -69,6 +69,13 @@ These work entirely in the browser — no server, no API key:
   stored with the plan, shown offline, printed, and read aloud by the TTS
   voice. The user is reminded the parish must hold the usual reproduction
   licence for copyright texts.
+- **Whole-service paste & parser** — for the Common Worship offices, the wizard
+  links straight to that day's Daily Prayer page on the C of E site. Paste the
+  whole service in one go (the page has a *Copy to clipboard* button) and
+  `cwParser.ts` splits it on the official section headings (Preparation,
+  Psalmody, Canticle, Scripture Reading, Gospel Canticle, Prayers, the Collect,
+  the Lord's Prayer, the Conclusion) into the matching sections, switching on
+  any optional parts it fills. Per-section paste boxes remain for fine-tuning.
 - **Printable order of service** — `PrintSheet` assembles the whole plan into a
   clean document for the leader or printed pew sheets (`window.print()` → PDF).
 - **Run‑mode practicalities** — Screen Wake Lock keeps the phone awake while

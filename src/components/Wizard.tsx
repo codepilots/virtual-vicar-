@@ -15,6 +15,7 @@ import {
   todayIso,
 } from '../lib/plan';
 import { saveSectionPrefs } from '../lib/storage';
+import { parseCommonWorshipService } from '../lib/cwParser';
 import { DayBanner } from './DayBanner';
 import { HymnPicker } from './HymnPicker';
 import { FeedPreview } from './FeedPreview';
@@ -61,6 +62,36 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
 
   const sectionOn = (s: (typeof service.sections)[number]) =>
     !s.optional || (plan.includedSections[s.id] ?? false);
+
+  // Whole-service paste: parse one block from the C of E Daily Prayer page and
+  // distribute it into the matching sections.
+  const [wholePaste, setWholePaste] = useState('');
+  const [parseSummary, setParseSummary] = useState<string | null>(null);
+
+  const distributeWholeService = () => {
+    const result = parseCommonWorshipService(wholePaste, service);
+    if (result.filledIds.length === 0) {
+      setParseSummary(
+        "Couldn't find the section headings — paste the whole page (use its “Copy to clipboard” button).",
+      );
+      return;
+    }
+    // Merge parsed text in, and switch on any optional section we filled.
+    const customTexts = { ...plan.customTexts, ...result.texts };
+    const includedSections = { ...plan.includedSections };
+    for (const id of result.filledIds) {
+      const sec = service.sections.find((s) => s.id === id);
+      if (sec?.optional) includedSections[id] = true;
+    }
+    saveSectionPrefs(plan.serviceId, includedSections);
+    update({ customTexts, includedSections });
+
+    const titles = result.filledIds
+      .map((id) => service.sections.find((s) => s.id === id)?.title)
+      .filter(Boolean);
+    setParseSummary(`Filled ${titles.length} section(s): ${titles.join(', ')}.`);
+    setWholePaste('');
+  };
 
   const next = () => setStep((s) => Math.min(STEP_COUNT - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
@@ -129,12 +160,69 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
           <h2>Which parts will you include?</h2>
           <p className="subtle">Turn optional sections on or off. Fixed parts are always shown.</p>
           {service.tradition === 'Common Worship' && (
-            <p className="subtle">
-              Sections marked “text not bundled” show only a placeholder: the Common Worship
-              wording is © The Archbishops’ Council, so it isn’t shipped with the app. If your
-              parish holds the usual reproduction licence, paste the wording in and it will be
-              shown, printed and read aloud — even offline.
-            </p>
+            <>
+              <p className="subtle">
+                Sections marked “text not bundled” show only a placeholder: the Common Worship
+                wording is © The Archbishops’ Council, so it isn’t shipped with the app. If your
+                parish holds the usual reproduction licence, paste the wording in and it will be
+                shown, printed and read aloud — even offline.
+              </p>
+              <details className="card" style={{ marginBottom: 12 }}>
+                <summary className="link" style={{ cursor: 'pointer' }}>
+                  ⚡ Paste the whole service at once
+                </summary>
+                <ol className="subtle" style={{ fontSize: 13, paddingLeft: 18, marginTop: 8 }}>
+                  <li>
+                    <a
+                      className="link"
+                      href={officialLectionaryUrl(
+                        day,
+                        service.timeOfDay,
+                        false,
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open today’s {service.name} on the C of E site →
+                    </a>
+                  </li>
+                  <li>Tap its “Copy to clipboard” button (or select all the service text).</li>
+                  <li>Paste below and tap <strong>Distribute into sections</strong>.</li>
+                </ol>
+                <textarea
+                  value={wholePaste}
+                  onChange={(e) => setWholePaste(e.target.value)}
+                  rows={6}
+                  placeholder="Paste the whole Daily Prayer service here…"
+                  style={{
+                    width: '100%',
+                    marginTop: 6,
+                    padding: 10,
+                    fontFamily: 'inherit',
+                    fontSize: 14,
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <div className="btn-row" style={{ marginTop: 8 }}>
+                  <button
+                    className="btn secondary small"
+                    onClick={distributeWholeService}
+                    disabled={!wholePaste.trim()}
+                  >
+                    Distribute into sections
+                  </button>
+                </div>
+                {parseSummary && (
+                  <p className="subtle" style={{ fontSize: 13, marginTop: 8 }}>
+                    {parseSummary}
+                  </p>
+                )}
+                <p className="subtle" style={{ fontSize: 12, marginTop: 6 }}>
+                  Stored only on this device (and in plans you share or back up). Please make sure
+                  your parish holds the right to reproduce the texts.
+                </p>
+              </details>
+            </>
           )}
           <div className="card">
             {service.sections.map((s) => {

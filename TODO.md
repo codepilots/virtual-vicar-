@@ -33,11 +33,13 @@ ideas parked for later. (See `README.md` for what's already built.)
          NEH / A&M / MP editions; editions differ!)
 3. **Decide on Common Worship texts.** The CW services are placeholders
    because the text is © The Archbishops' Council. If the parish holds the
-   right licence (most do for local reproduction), drop the texts into
-   `src/data/services.ts` — or simply paste them per-plan in the wizard
-   (sections marked "text not bundled" have a paste box; pasted text works
-   offline and with the read-aloud voice). Otherwise the BCP services are
-   fully usable today.
+   right licence (most do for local reproduction), either paste the whole
+   day's service in one go in the wizard (the "⚡ Paste the whole service"
+   box parses it into the right sections), paste per-section, or drop the
+   texts permanently into `src/data/services.ts`. Otherwise the BCP services
+   are fully usable today.
+   - [ ] Confirm the whole-service parser against a few dates/offices live
+         (it keys off the C of E page headings; structure has been stable).
 4. **Pick a deployment domain** if GitHub Pages isn't wanted (Netlify/Vercel
    also work; unset `VV_BASE` for a root domain).
 

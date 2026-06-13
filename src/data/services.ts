@@ -86,14 +86,15 @@ const morningPrayer: ServiceDefinition = {
     { id: 'preces', title: 'Opening Versicles', kind: 'responsive', role: 'officiant', optional: false, text: placeholder('O Lord, open our lips…') },
     { id: 'venite', title: 'Venite / Opening Canticle', kind: 'psalm', role: 'all', optional: true },
     { id: 'psalmody', title: 'Psalmody', kind: 'psalm', role: 'all', optional: false, note: 'From the lectionary for the day.' },
-    { id: 'first-reading', title: 'First Reading', kind: 'reading', role: 'reader', optional: false },
-    { id: 'canticle', title: 'Canticle', kind: 'said', role: 'all', optional: true, text: placeholder('Canticle, e.g. Benedictus') },
+    { id: 'canticle', title: 'Canticle', kind: 'said', role: 'all', optional: true, text: placeholder('Canticle') },
+    { id: 'first-reading', title: 'Scripture Reading', kind: 'reading', role: 'reader', optional: false },
     { id: 'second-reading', title: 'Second Reading', kind: 'reading', role: 'reader', optional: true },
+    { id: 'gospel-canticle', title: 'Gospel Canticle (Benedictus)', kind: 'said', role: 'all', optional: true, text: placeholder('Gospel Canticle') },
     { id: 'sermon', title: 'Sermon / Address', kind: 'sermon', role: 'officiant', optional: true, note: 'Optional reflection or address.' },
     { id: 'creed', title: 'The Apostles’ Creed', kind: 'said', role: 'all', optional: true, text: placeholder('Apostles’ Creed') },
     { id: 'prayers', title: 'Prayers / Intercessions', kind: 'prayers', role: 'officiant', optional: false },
-    { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: placeholder('The Lord’s Prayer') },
     { id: 'collect', title: 'The Collect of the Day', kind: 'collect', role: 'officiant', optional: false },
+    { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: false, text: placeholder('The Lord’s Prayer') },
     { id: 'mid-hymn', title: 'Hymn', kind: 'hymn', role: 'all', optional: true },
     { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding sentence & grace') },
     { id: 'closing-hymn', title: 'Closing Hymn', kind: 'hymn', role: 'all', optional: true },
@@ -107,7 +108,7 @@ const eveningPrayer: ServiceDefinition = {
   summary: 'The daily office of Evening Prayer — may be led by a lay person.',
   timeOfDay: 'evening',
   sections: morningPrayer.sections.map((s) =>
-    s.id === 'canticle' ? { ...s, note: 'Canticle, e.g. Magnificat' } : s,
+    s.id === 'gospel-canticle' ? { ...s, title: 'Gospel Canticle (Magnificat)' } : s,
   ),
 };
 
@@ -128,6 +129,7 @@ const nightPrayer: ServiceDefinition = {
     { id: 'nunc-dimittis', title: 'Nunc Dimittis', kind: 'said', role: 'all', optional: true, text: placeholder('Nunc Dimittis') },
     { id: 'prayers', title: 'Prayers', kind: 'prayers', role: 'officiant', optional: false },
     { id: 'collect', title: 'The Collect', kind: 'collect', role: 'officiant', optional: false },
+    { id: 'lords-prayer', title: 'The Lord’s Prayer', kind: 'said', role: 'all', optional: true, text: placeholder('The Lord’s Prayer') },
     { id: 'conclusion', title: 'The Conclusion', kind: 'said', role: 'officiant', optional: false, text: placeholder('Concluding blessing') },
   ],
 };
