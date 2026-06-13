@@ -12,6 +12,7 @@ import {
   dayFromIso,
   defaultPlan,
   estimateDuration,
+  hasTwoReadings,
   isDailyOffice,
   overlayLectionary,
   pastedReadingRefs,
@@ -277,6 +278,8 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
     // the pasted service. Other services use the RCL from the online source.
     const pasted = dailyOffice ? pastedReadingRefs(plan, service) : null;
     const cardRefs = pasted ? [...pasted.psalms, ...pasted.readings] : readings.refs;
+    const twoReadings = hasTwoReadings(plan, service);
+    const hasCanticle = service.sections.some((s) => s.id === 'canticle');
     return (
     <div>
       <h2>{GROUP_TITLES.readings}</h2>
@@ -328,35 +331,62 @@ export function Wizard({ settings, initialPlan, onComplete, onPrint }: Props) {
           Open the official lectionary for this date →
         </a>
       </div>
-      {groupSections('readings').map((s) => {
-        const on = sectionOn(s);
-        const custom = plan.customTexts?.[s.id] ?? '';
-        return (
-          <div key={s.id} className="card">
-            <label className="switch">
-              <span className="sw-text">
-                <span className="t">{s.title}</span>
-                <span className="d">{s.optional ? 'Optional' : 'Always included'}{s.note ? ` · ${s.note}` : ''}</span>
-              </span>
-              <input
-                type="checkbox"
-                className="toggle"
-                checked={on}
-                disabled={!s.optional}
-                onChange={(e) => toggleSection(s.id, e.target.checked)}
-              />
-            </label>
-            {on && !s.text && (
-              <PasteTextBox
-                label={`Paste the text of “${s.title}” for offline use & read-aloud`}
-                value={custom}
-                onChange={(t) => setCustomText(s.id, t)}
-              />
-            )}
-            {on && <CwReferences refs={extractCwReferences(custom)} />}
+      {twoReadings && hasCanticle && (
+        <div className="card">
+          <div className="subtle" style={{ fontSize: 13, marginBottom: 6 }}>
+            There are two readings. The first may be read before the canticle (in the psalmody), or
+            both after it:
           </div>
-        );
-      })}
+          <label className="alt-opt" style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0' }}>
+            <input
+              type="radio"
+              checked={plan.firstReadingBeforeCanticle ?? true}
+              onChange={() => update({ firstReadingBeforeCanticle: true })}
+            />
+            <span>First reading before the canticle</span>
+          </label>
+          <label className="alt-opt" style={{ display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 0' }}>
+            <input
+              type="radio"
+              checked={!(plan.firstReadingBeforeCanticle ?? true)}
+              onChange={() => update({ firstReadingBeforeCanticle: false })}
+            />
+            <span>Both readings after the canticle</span>
+          </label>
+        </div>
+      )}
+      {groupSections('readings')
+        // Hide the second-reading slot unless the day actually has two readings.
+        .filter((s) => s.id !== 'second-reading' || twoReadings)
+        .map((s) => {
+          const on = sectionOn(s);
+          const custom = plan.customTexts?.[s.id] ?? '';
+          return (
+            <div key={s.id} className="card">
+              <label className="switch">
+                <span className="sw-text">
+                  <span className="t">{s.title}</span>
+                  <span className="d">{s.optional ? 'Optional' : 'Always included'}{s.note ? ` · ${s.note}` : ''}</span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="toggle"
+                  checked={on}
+                  disabled={!s.optional}
+                  onChange={(e) => toggleSection(s.id, e.target.checked)}
+                />
+              </label>
+              {on && !s.text && (
+                <PasteTextBox
+                  label={`Paste the text of “${s.title}” for offline use & read-aloud`}
+                  value={custom}
+                  onChange={(t) => setCustomText(s.id, t)}
+                />
+              )}
+              {on && <CwReferences refs={extractCwReferences(custom)} />}
+            </div>
+          );
+        })}
     </div>
     );
   };

@@ -12,9 +12,12 @@ import type { ServiceDefinition } from '../data/services';
 
 interface Anchor {
   test: RegExp;
-  /** Candidate section ids, in priority order; first one present in the
-   *  service (and not already filled) wins. */
+  /** Candidate section ids, in priority order; the first one present in the
+   *  service and not already filled wins. */
   ids: string[];
+  /** Keep the matched line in the captured block (for rubric-introduced
+   *  sections whose heading is itself part of the guidance). */
+  keepLine?: boolean;
 }
 
 // Short standalone heading lines. Order matters only for readability; matching
@@ -30,7 +33,10 @@ const ANCHORS: Anchor[] = [
   { test: /^praise$/i, ids: ['praise'] },
   { test: /^psalmody$/i, ids: ['psalmody'] },
   { test: /^canticle$/i, ids: ['canticle'] },
-  { test: /scripture\s+reading/i, ids: ['first-reading', 'reading'] },
+  // "Scripture Reading" is the reading after the canticle; if the first reading
+  // was already taken in the psalmody (see the rubric anchor below), it falls
+  // through to the second-reading slot.
+  { test: /scripture\s+reading/i, ids: ['first-reading', 'second-reading', 'reading'] },
   { test: /^short\s+readings?$/i, ids: ['reading', 'first-reading'] },
   { test: /^(the\s+)?reading\b/i, ids: ['first-reading', 'reading'] },
   { test: /gospel\s+canticle/i, ids: ['gospel-canticle', 'nunc-dimittis'] },
@@ -45,12 +51,17 @@ const ANCHORS: Anchor[] = [
 ];
 
 // Section starts that the page introduces only by a rubric (no short title of
-// their own), so they may run past the short-heading length limit. The
-// post-reading responsory in Morning/Evening Prayer is the main case:
-// "A suitable song or chant, or a responsory in this or another form, may
-// follow".
+// their own), so they may run past the short-heading length limit. `keepLine`
+// keeps the rubric in the section — it's part of the guidance, not just a
+// heading.
 const RUBRIC_ANCHORS: Anchor[] = [
-  { test: /\bsuitable\s+(song|hymn|chant)\b.*\bresponsory\b/i, ids: ['responsory'] },
+  // The post-reading responsory in Morning/Evening Prayer: "A suitable song or
+  // chant, or a responsory in this or another form, may follow".
+  { test: /\bsuitable\s+(song|hymn|chant)\b.*\bresponsory\b/i, ids: ['responsory'], keepLine: true },
+  // The first of two readings may be read in the psalmody position: "If there
+  // are two Scripture readings, the first may be read here, or both may be read
+  // after the canticle." Splits that first reading out of the psalmody.
+  { test: /if there are two scripture readings/i, ids: ['first-reading'], keepLine: true },
 ];
 
 // A heading-only divider on the page that ends the previous block but starts
@@ -143,10 +154,7 @@ export function parseCommonWorshipService(
     .split('\n')
     .map((l) => l.trim());
 
-  // Collect every candidate block per section; the page can repeat a heading
-  // (e.g. "The Collect of the day or the following is said" then "The Collect
-  // of the day is said"), so we keep the longest, real block for each section.
-  const candidates: Record<string, string[]> = {};
+  const texts: Record<string, string> = {};
   const unmatchedHeadings: string[] = [];
 
   let currentIds: string[] | null = null;
@@ -156,11 +164,13 @@ export function parseCommonWorshipService(
     if (currentIds && buffer.length) {
       const body = clean(buffer);
       if (body) {
-        for (const id of currentIds) {
-          if (sectionIds.has(id)) {
-            (candidates[id] ??= []).push(body);
-            break;
-          }
+        const ids = currentIds.filter((id) => sectionIds.has(id));
+        // Fill the first matching slot that's still empty (so the two readings
+        // land in two slots); if all are filled, keep the longer block — the
+        // page sometimes repeats a heading.
+        const target = ids.find((id) => texts[id] === undefined) ?? ids[0];
+        if (target !== undefined && body.length > (texts[target]?.length ?? 0)) {
+          texts[target] = body;
         }
       }
     }
@@ -180,19 +190,13 @@ export function parseCommonWorshipService(
       // Record headings we recognise but can't place in this service.
       if (!heading.ids.some((id) => sectionIds.has(id))) unmatchedHeadings.push(line);
       currentIds = heading.ids;
+      // Rubric-introduced sections keep their heading line as guidance.
+      if (heading.keepLine) buffer.push(line);
       continue;
     }
     if (currentIds) buffer.push(line);
   }
   flush();
 
-  const texts: Record<string, string> = {};
-  const filledIds: string[] = [];
-  for (const [id, blocks] of Object.entries(candidates)) {
-    const best = blocks.reduce((a, b) => (b.length > a.length ? b : a));
-    texts[id] = best;
-    filledIds.push(id);
-  }
-
-  return { texts, filledIds, unmatchedHeadings };
+  return { texts, filledIds: Object.keys(texts), unmatchedHeadings };
 }

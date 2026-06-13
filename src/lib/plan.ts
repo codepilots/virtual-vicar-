@@ -123,6 +123,17 @@ export function isSectionIncluded(plan: ServicePlan, section: ServiceSection): b
   return plan.includedSections[section.id] ?? false;
 }
 
+/** True when the day has been given two Scripture readings (a first and second
+ *  reading both present), so the before/after-canticle placement choice and the
+ *  second-reading slot are relevant. */
+export function hasTwoReadings(plan: ServicePlan, service: ServiceDefinition): boolean {
+  const first = service.sections.find((s) => s.id === 'first-reading');
+  const second = service.sections.find((s) => s.id === 'second-reading');
+  if (!first || !second) return false;
+  const filled = (id: string) => Boolean(plan.customTexts?.[id]?.trim());
+  return isSectionIncluded(plan, second) && (filled('first-reading') || filled('second-reading'));
+}
+
 export function hymnForSection(plan: ServicePlan, sectionId: string): HymnChoice | undefined {
   return plan.hymns.find((h) => h.sectionId === sectionId);
 }
@@ -201,7 +212,21 @@ export function buildRunSteps(plan: ServicePlan, settings: Settings): RunStep[] 
   const steps: RunStep[] = [];
   let readingIdx = 0;
 
-  for (const s of service.sections) {
+  // With two readings, the first may be read in the psalmody position (before
+  // the canticle) or both after it (CW rubric). Reorder the section list to put
+  // the first reading just before the canticle when that's chosen.
+  let orderedSections = service.sections;
+  if (hasTwoReadings(plan, service) && (plan.firstReadingBeforeCanticle ?? true)) {
+    const canticleIdx = orderedSections.findIndex((s) => s.id === 'canticle');
+    const firstReading = orderedSections.find((s) => s.id === 'first-reading');
+    if (canticleIdx >= 0 && firstReading) {
+      orderedSections = orderedSections.filter((s) => s.id !== 'first-reading');
+      const at = orderedSections.findIndex((s) => s.id === 'canticle');
+      orderedSections = [...orderedSections.slice(0, at), firstReading, ...orderedSections.slice(at)];
+    }
+  }
+
+  for (const s of orderedSections) {
     if (!isSectionIncluded(plan, s)) continue;
     // The Reflection is hidden unless explicitly enabled in Settings.
     if (s.kind === 'sermon' && !settings.allowReflection) continue;

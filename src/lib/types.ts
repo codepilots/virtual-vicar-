@@ -104,6 +104,12 @@ export interface ServicePlan {
    * < 0 / missing to keep all of that group (decide on the day).
    */
   alternatives?: Record<string, number[]>;
+  /**
+   * When the day has two readings (Daily Office), whether the first is read in
+   * the psalmody position before the canticle (true), or both are read after
+   * the canticle (false). Only meaningful when there are two readings.
+   */
+  firstReadingBeforeCanticle?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

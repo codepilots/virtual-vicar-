@@ -39,7 +39,7 @@ export interface LiturgySegment {
 
 // A line is a direction/rubric (not spoken, shown muted-italic).
 const RUBRIC =
-  /\bmay (?:be (?:said|sung|used|read|offered|kept)|follow|replace)\b|\b(?:is|are) (?:said|sung|read|offered|kept)\b|^(?:the following|one of|one or more|\(?either\b|or,\s|this\b.*\bprayer\b|silence\b|all stand|all sit|at the end|each psalm or group)/i;
+  /\bmay (?:be (?:said|sung|used|read|offered|kept)|follow|replace)\b|\b(?:is|are) (?:said|sung|read|offered|kept)\b|\b(?:a |another )?suitable (?:song|hymn|chant|canticle|psalm)\b|^(?:the following|one of|one or more|\(?either\b|or,\s|this\b.*\bprayer\b|silence\b|all stand|all sit|at the end|each psalm or group)/i;
 // An alternative-rubric line: a bare marker ("or" / "(or)") or one that opens
 // an alternative ("or a suitable hymn,", "or A Song of God's Praise").
 const ALT_MARKER = /^\(?or\b/i;
@@ -123,16 +123,26 @@ function rejoinSoftWraps(lines: string[]): string[] {
   return out;
 }
 
-// Looking forward from line i, does the next *logical unit* (skipping wrapped
-// continuation lines) begin a congregation response? Used to spot an officiant
-// versicle sitting between two responses.
-function nextUnitIsResponse(lines: string[], i: number): boolean {
+// Scanning forward from line i, is there another congregation response before
+// the next structural break (a rubric, alternative marker, heading, verse,
+// citation or blank line)? Used to tell an officiant versicle that sits between
+// responses (responsory, conclusion) from the later sentences of one long
+// response (the Lord's Prayer), which has no response after it.
+function responseAhead(lines: string[], i: number): boolean {
   for (let j = i + 1; j < lines.length; j++) {
     const l = lines[j].trim();
     if (l === '') return false;
-    const prev = lines[j - 1].trim();
-    if (j > i + 1 && !TERMINAL.test(prev)) continue; // wrapped continuation — skip
-    return isResponseStart(l);
+    if (isResponseStart(l)) return true;
+    if (
+      /^\d/.test(l) ||
+      SUBHEADING.test(l) ||
+      CROSSREF.test(l) ||
+      ATTRIBUTION.test(l) ||
+      REFRAIN.test(l) ||
+      RUBRIC.test(l) ||
+      ALT_MARKER.test(l)
+    )
+      return false;
   }
   return false;
 }
@@ -273,9 +283,7 @@ export function classifyLiturgy(text: string): LiturgySegment[] {
       const rest = splitAllMarker(line).replace(/^All\s*/, '');
       segs.push({ role: 'response', text: rest, allMarker: true });
       prevTerminal = TERMINAL.test(rest);
-      // The response runs on only while its sentence is unfinished; once it
-      // closes, the next line is fresh (officiant text, a rubric, …).
-      response = !prevTerminal;
+      response = true;
       continue;
     }
 
@@ -287,20 +295,17 @@ export function classifyLiturgy(text: string): LiturgySegment[] {
     }
 
     if (response) {
-      // An officiant versicle between responses: it follows a completed unit
-      // and is itself immediately followed by a response (or a response begins
-      // the next unit). Otherwise this line is a response continuation.
-      const nextLine = (lines[i + 1] ?? '').trim();
-      const officiant =
-        prevTerminal &&
-        ((nextLine !== '' && isResponseStart(nextLine)) ||
-          (TERMINAL.test(line) && nextUnitIsResponse(lines, i)));
+      // While a congregation response is open, a plain line is an officiant
+      // versicle (not "All") only when its sentence has closed and another
+      // response follows before the next break — the responsory/conclusion
+      // pattern. Otherwise it's a later sentence of the same response (e.g. the
+      // Lord's Prayer, which has no response after it).
+      const officiant = prevTerminal && responseAhead(lines, i);
       if (officiant) {
         response = false;
         segs.push({ role: 'normal', text: line });
       } else {
         segs.push({ role: 'response', text: line });
-        response = !TERMINAL.test(line); // response ends when its sentence does
       }
     } else {
       segs.push({ role: 'normal', text: line });
@@ -333,7 +338,14 @@ export function Liturgy({ text, className }: { text: string; className?: string 
           <span className="vl-resp-body">
             {body.map((b, k) => (
               <strong className="vl-resp-line" key={k}>
-                {b}
+                {/* A pointed All response (e.g. a canticle doxology) carries ♦
+                    marks; lay them out as half-verses rather than inline. */}
+                {b.split(/\s*[♦◆◇]\s*/).map((part, m, arr) => (
+                  <span className="vl-halfverse" key={m}>
+                    {part}
+                    {m < arr.length - 1 && <span className="vl-point"> ♦</span>}
+                  </span>
+                ))}
               </strong>
             ))}
           </span>
